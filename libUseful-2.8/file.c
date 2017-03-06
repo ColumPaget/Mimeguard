@@ -1389,7 +1389,7 @@ return(pos);
 
 char *STREAMReadToTerminator(char *Buffer, STREAM *S, unsigned char Term)
 {
-int result, len=0, bytes_read=0;
+int result, len=0, space, bytes_read=0;
 char *RetStr=NULL, *ptr;
 int IsClosed=FALSE;
 
@@ -1407,7 +1407,11 @@ while (1)
 		//memchr is wicked fast, so use it
 		ptr=memchr(S->InputBuff+S->InStart,Term,S->InEnd - S->InStart);
 		if (ptr) len=(ptr+1)-(S->InputBuff+S->InStart);
-		else if ((S->InEnd >= S->BuffSize) || IsClosed) len=S->InEnd-S->InStart;
+		else if (S->InStart > 0) len=0; //call 'ReadCharsToBuffer' which will move 'InStart' to start of buffer 
+		else if ((S->InEnd >= S->BuffSize) || IsClosed) 
+		{
+			len=S->InEnd-S->InStart;
+		}
 	}
 	//if nothing in buffer and connection closed, return NULL
 	else if (IsClosed)

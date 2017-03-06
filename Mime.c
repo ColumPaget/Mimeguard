@@ -210,15 +210,25 @@ STREAM *Doc=NULL;
 
 BoundLen=StrLen(Boundary);
 
+if (Flags & FLAG_DEBUG) printf("MIME-DECODE: %s\n",*SavePath);
 fd=ExportOpen(Item, SavePath);
 if (fd > -1) Doc=STREAMFromFD(fd);
 
 Tempstr=STREAMReadLine(Tempstr, S);
 while (Tempstr)
 {
-	if (BoundLen && (strncmp(Tempstr,Boundary, BoundLen)==0)) break;
+	if (BoundLen && (strncmp(Tempstr,Boundary, BoundLen)==0))
+	{
+		if (Flags & FLAG_DEBUG) printf("MIME-BOUNDARY: %s\n",Tempstr);
+		break;
+	}
 
 	result=DecodeDocumentLine(Tempstr, Item->Encoding, &Data);
+
+	if (Flags & FLAG_DEBUG) 
+	{
+		if (result < 0) printf("MIME-BYTES: %d %s\n",result,Tempstr);
+	}
 
 	lines++;
 	if (Doc && (result > 0)) 
@@ -229,7 +239,12 @@ while (Tempstr)
 	Tempstr=STREAMReadLine(Tempstr, S);
 }
 
-if (Doc) STREAMSeek(Doc,0,SEEK_SET);
+
+if (Doc) 
+{
+	STREAMFlush(Doc);
+	STREAMSeek(Doc,0,SEEK_SET);
+}
 	
 DestroyString(Tempstr);
 DestroyString(Data);

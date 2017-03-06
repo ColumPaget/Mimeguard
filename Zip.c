@@ -11,7 +11,8 @@ STREAM *S;
 
 if ((Flags & FLAG_DEBUG)) printf("Check Zip: [%s]\n",Path);
 UnzipExe=FindFileInPath(UnzipExe, "unzip", getenv("PATH"));
-Tempstr=MCopyStr(Tempstr, UnzipExe, " -l ",Path,NULL);
+Tempstr=MCopyStr(Tempstr, UnzipExe, " -l '",Path,"'",NULL);
+if ((Flags & FLAG_DEBUG)) printf("Running  : [%s]\n",Tempstr);
 S=STREAMSpawnCommand(Tempstr, COMMS_BY_PIPE, "");
 if (S)
 {
@@ -20,12 +21,14 @@ if (S)
 Tempstr=STREAMReadLine(Tempstr,S);
 while (Tempstr && (*Tempstr != '-'))
 {
+if ((Flags & FLAG_DEBUG)) printf("unzip out: %s",Tempstr);
 Tempstr=STREAMReadLine(Tempstr,S);
 }
 
 Tempstr=STREAMReadLine(Tempstr,S);
 while (Tempstr && (*Tempstr != '-'))
 {
+if ((Flags & FLAG_DEBUG)) printf("unzip out: %s",Tempstr);
 	StripTrailingWhitespace(Tempstr);
 	ptr=Tempstr;
 	while (isspace(*ptr)) ptr++;

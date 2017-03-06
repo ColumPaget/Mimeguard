@@ -1,7 +1,7 @@
 FLAGS=
 LIBS=-lm -lz 
-prefix=/usr
-sysconfdir=/etc
+prefix=/
+sysconfdir=${prefix}/etc
 
 OBJ=common.o DocumentTypes.o Mime.o Magic.o FileExtensions.o FileTypeRules.o Export.o DocumentStrings.o ConfigFile.o Output.o Zip.o PDF.o RTF.o OLE.o libUseful-2.8/libUseful-2.8.a
 all: $(OBJ) main.c
