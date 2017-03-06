@@ -1426,6 +1426,7 @@ while (1)
 		result=STREAMReadCharsToBuffer(S);
 		switch (result)
 		{
+printf("SRC2B %d\n", result);
 		case STREAM_CLOSED: IsClosed=TRUE; break;
 		//if we timeout then just return RetStr (which will be empty) this 
 		//distinguishes timeout conditions from the stream being closed, as when

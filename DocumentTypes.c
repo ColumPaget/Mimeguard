@@ -32,7 +32,6 @@ int RetVal=RULE_NONE;
 
 	if (! Item) return(RetVal);
 
-
   if (
 			(DocTypeMatch(Item, "application/zip")) ||
 			(DocTypeMatch(Item,"application/x-zip-compressed"))

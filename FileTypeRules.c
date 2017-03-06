@@ -136,8 +136,15 @@ ListNode *Node;
 TFileRule *Rule;
 
 Node=ListFindNamedItem(Rules, MimeType);
-if (! Node) return("");
+
+if (! Node)
+{
+	if (Flags & FLAG_DEBUG) printf("TranslateMimeType: %s no matches\n",MimeType);
+	return("");
+}
+
 Rule=(TFileRule *) Node->Item;
+if (Flags & FLAG_DEBUG) printf("TranslateMimeType: %s no -> %s\n",MimeType, Rule->Equivalent);
 
 return(Rule->Equivalent);
 }

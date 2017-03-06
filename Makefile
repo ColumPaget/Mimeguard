@@ -1,12 +1,14 @@
 FLAGS=
 LIBS=-lm -lz 
-prefix=/
-sysconfdir=${prefix}/etc
+prefix=/usr
+sysconfdir=/etc
+bindir=${exec_prefix}/bin
 
 OBJ=common.o DocumentTypes.o Mime.o Magic.o FileExtensions.o FileTypeRules.o Export.o DocumentStrings.o ConfigFile.o Output.o Zip.o PDF.o RTF.o OLE.o libUseful-2.8/libUseful-2.8.a
-all: $(OBJ) main.c
-	gcc $(FLAGS) -omimeguard main.c $(OBJ) $(LIBS) -DPREFIX=\"$(prefix)\" -DSYSCONFDIR=\"$(sysconfdir)\"
 
+
+mimeguard: $(OBJ) main.c
+	gcc $(FLAGS) -omimeguard main.c $(OBJ) $(LIBS) -DPREFIX=\"$(prefix)\" -DSYSCONFDIR=\"$(sysconfdir)\"
 
 Mime.o: Mime.h Mime.c
 	gcc $(FLAGS) -c Mime.c
@@ -55,3 +57,6 @@ libUseful-2.8/libUseful-2.8.a:
 
 clean:
 	@rm -f *.o */*.o */*.a */*.so mimeguard.exe
+
+install: mimeguard
+	install-sh mimeguard $(bindir)

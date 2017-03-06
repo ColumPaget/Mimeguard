@@ -254,7 +254,7 @@ if (Dir->Type > 0)
 	{
 	if (Flags & FLAG_DEBUG) printf("STREAM: %s\n",Tempstr); 
 	if (strcmp(Tempstr,"Root Entry")==0) ParseFlags |=OLEPARSE_ROOTENTRY;
-	if ((strcmp(Tempstr,"Macros")==0) || (strcmp(Tempstr,"VBA")==0)) ParseFlags |=OLEPARSE_MACROS;
+	if ((strcmp(Tempstr,"Macros")==0) || (strcmp(Tempstr,"VBA")==0) || (strcmp(Tempstr,"_VBA_PROJECT_CUR")==0)) ParseFlags |=OLEPARSE_MACROS;
 	}
 }
 

@@ -69,6 +69,7 @@ Tempstr=STREAMReadLine(Tempstr, S);
 
 STREAMClose(S);
 }
+else printf("ERROR: Failed to open config file %s\n",Path);
 
 FileRulesLoadPostProcess();
 

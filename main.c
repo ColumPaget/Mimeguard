@@ -36,6 +36,12 @@ exit(0);
 }
 
 
+void PrintVersion()
+{
+	printf("mimeguard version %s\n",VERSION);
+	printf("default config file: %s/mimeguard.conf\n",SYSCONFDIR);
+	exit(0);
+}
 
 void ParseCommandLine(int argc, char *argv[])
 {
@@ -89,11 +95,7 @@ for (i=1; i < argc; i++)
 		(strcmp(argv[i],"--version")==0) ||
 		(strcmp(argv[i],"-version")==0) ||
 		(strcmp(argv[i],"-v")==0)
-	)	
-	{
-	printf("mimeguard version %s\n",VERSION);
-	exit(0);
-	}
+	)	PrintVersion();
 
 
 }
