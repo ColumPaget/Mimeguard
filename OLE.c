@@ -59,6 +59,7 @@ int DirCount=0, ParseFlags=0;
 #define OLEPARSE_ROOTENTRY 1
 #define OLEPARSE_MACROS    2
 #define OLEPARSE_BADSECTOR 4
+#define OLEPARSE_ENCRYPTED 8
 
 
 long GetNextSector(long Curr)
@@ -254,7 +255,8 @@ if (Dir->Type > 0)
 	{
 	if (Flags & FLAG_DEBUG) printf("STREAM: %s\n",Tempstr); 
 	if (strcmp(Tempstr,"Root Entry")==0) ParseFlags |=OLEPARSE_ROOTENTRY;
-	if ((strcmp(Tempstr,"Macros")==0) || (strcmp(Tempstr,"VBA")==0) || (strcmp(Tempstr,"_VBA_PROJECT_CUR")==0)) ParseFlags |=OLEPARSE_MACROS;
+	else if ((strcmp(Tempstr,"Macros")==0) || (strcmp(Tempstr,"VBA")==0) || (strcmp(Tempstr,"_VBA_PROJECT_CUR")==0)) ParseFlags |=OLEPARSE_MACROS;
+	else if (strcmp(Tempstr,"EncryptedPackage")==0) ParseFlags |=OLEPARSE_ENCRYPTED;
 	}
 }
 
@@ -357,10 +359,11 @@ if (S)
 //if we found no streams/directories, then declare this is 'malformed'
 if (ParseFlags & OLEPARSE_MACROS) 
 {
-			Item->RulesResult=RULE_MACROS | RULE_EVIL;
-			Item->ResultInfo=CommaList(Item->ResultInfo, "macros");
+	Item->RulesResult=RULE_MACROS;
+	Item->ResultInfo=CommaList(Item->ResultInfo, "macros");
 }
 
+if (ParseFlags & OLEPARSE_ENCRYPTED) Item->RulesResult=RULE_ENCRYPTED;
 
 if (ParseFlags & OLEPARSE_BADSECTOR) 
 {
@@ -370,13 +373,14 @@ if (ParseFlags & OLEPARSE_BADSECTOR)
 
 if (DirCount==0)
 {
-			Item->RulesResult=RULE_MALFORMED | RULE_EVIL;
-			Item->ResultInfo=CommaList(Item->ResultInfo,"malformed: no content streams");
+	//if we found no streams/directories, then declare this is 'malformed'
+	Item->RulesResult=RULE_MALFORMED | RULE_EVIL;
+	Item->ResultInfo=CommaList(Item->ResultInfo,"malformed: no content streams");
 }
 else if (! (ParseFlags & OLEPARSE_ROOTENTRY) )
 {
-			Item->RulesResult=RULE_MALFORMED | RULE_EVIL;
-			Item->ResultInfo=CommaList(Item->ResultInfo, "malformed: no root entry");
+	Item->RulesResult=RULE_MALFORMED | RULE_EVIL;
+	Item->ResultInfo=CommaList(Item->ResultInfo, "malformed: no root entry");
 }
 
 

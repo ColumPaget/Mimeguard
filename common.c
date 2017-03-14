@@ -1,4 +1,5 @@
 #include "common.h"
+#include "Mime.h"
 
 int Flags=0;
 char *ExportPath=NULL;
@@ -46,13 +47,13 @@ int result;
 
 	switch (Encoding)
 	{
-	case MIMEENC_BASE64:
+	case MIMEFLAG_BASE64:
   *Data=SetStrLen(*Data, StrLen(Line));
   result=from64tobits(*Data, Line);
   (*Data)[result]='\0';
 	break;
 
-	case MIMEENC_QUOTEDPRINTABLE:
+	case MIMEFLAG_QUOTEDPRINTABLE:
 		*Data=DecodeQuotedPrintable(*Data, Line);
 		result=StrLen(*Data);
 	break;

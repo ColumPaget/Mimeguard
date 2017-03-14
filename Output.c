@@ -76,6 +76,7 @@ if (Show)
 	if (Level==0) OutputHeaders(Top);
 
 	if (Item->RulesResult & RULE_CONTAINER) Item->ResultInfo=CommaList(Item->ResultInfo,"not allowed in container");
+	else if (Item->RulesResult & RULE_ENCRYPTED) Item->ResultInfo=CommaList(Item->ResultInfo,"encrypted");
 	else if (Item->RulesResult & RULE_EMPTY) Item->ResultInfo=CommaList(Item->ResultInfo,"empty container");
 
 

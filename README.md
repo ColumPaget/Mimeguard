@@ -11,13 +11,37 @@ Mimeguard and libUseful are (C) 2017 Colum Paget. They are released under the GP
 The usual proceedure:
 
 ```
-./configure
+./configure --enable-zlib
 make
 make install
 ```
 
-Should work. The 'make install' stage will have to be done as root. The default install paths will put the mimeguard exectuable in /usr/local/bin and the default config file /usr/local/etc. This can be changed by passing --prefix=<path> to configure.
+Should work. The 'make install' stage will have to be done as root. The default install paths will put the mimeguard exectuable in /usr/local/bin and the default config file /usr/local/etc. This can be changed by passing `--prefix=<path>` to configure. If, like most people, you want to put mimeguard in /usr/bin but the config file in /etc then use `--prefix=/usr --sysconfdir=/etc`
 
+Please supply '--enable-zlib' if your system has this library, as with this library mimeguard will be able to look deeper into PDF documents.
+
+
+
+# INVOCATION
+
+**mimeguard <options> <paths>**
+
+Options are:
+```
+  --help          Print this help
+  -help           Print this help
+  -?              Print this help
+  --version       Print program version
+  -version        Print program version
+  -c <path>       Path to config file
+  -d              Print debugging
+  -x              Dump/export/unpack file contents
+  -safe           Only show safe files
+  -evil           Only show unsafe/evil files
+  -show <email header> Show Email Header
+```
+
+When run on a console mimeguard will print out a color-coded breakdown of files/mime-types, highlighting any that it considers safe/not safe. This allows easy testing of changes made to your configuration file.
 
 
 #CONFIGURATION
@@ -34,7 +58,7 @@ Path to the 'mime.types' file that's used to identify filetypes from file extens
 Binds a list of file extensions to a particular mime-type, overriding information from the apache mime.types file.
 
 **FileType <mime type> <commands>**
-This config does most of the work. The 'mime type' argument is an fnmatch style pattern that matches against a mime type. For a given pattern one can supply the arguments 'safe', 'evil', 'container', 'contains', and 'equiv'. 'safe' and 'evil' are equivalent to 'ACCEPT' and 'REJECT' in an iptables firewall. mimeguard will return '0' (which is 'true' in bash scripts) if a file and all it's contained files are declared 'safe'. If will return various non-zero values if the file, or any of it's contents, match against an 'evil' rule. For example:
+This config does most of the work. The 'mime type' argument is an fnmatch style pattern that matches against a mime type. For a given pattern one can supply the arguments 'safe', 'evil', 'container', 'contains', and 'equiv'. 'safe' and 'evil' are equivalent to 'ACCEPT' and 'REJECT' in an iptables firewall. mimeguard will return '0' (which is 'true' in bash scripts) if a file and all it's contained files are declared 'safe'. If will return various non-zero values (all of which count as 'false') if the file, or any of it's contents, match against an 'evil' rule. For example:
 
 ```
 FileType * evil
@@ -118,26 +142,71 @@ This allows different configs for different email senders/recipients.
 
 # MACROS
 
-By default mimeguard will interrogate items of mime-type 'application/x-ole-storage' for macros. If the object contains an internal directory entry called 'Macros' or 'VBA' then it will be considered 'evil'. 
+By default mimeguard will interrogate items of mime-type 'application/x-ole-storage' for macros. If the object contains an internal directory entry called 'Macros' or 'VBA' then it will be considered 'evil'. If you want to allow macros (say you're using 'Header From' to allow a specific user to send files containing macros) then you can use the 'allow-macros' argument, like this:
 
-# INVOCATION
-
-**mimeguard <options> <paths>**
-
-Options are:
 ```
-  --help          Print this help
-  -help           Print this help
-  -?              Print this help
-  --version       Print program version
-  -version        Print program version
-  -c <path>       Path to config file
-  -d              Print debugging
-  -x              Dump/export/unpack file contents
-  -safe           Only show safe files
-  -evil           Only show unsafe/evil files
-  -show <email header> Show Email Header
+Header From *@microsoft.com FileType applicationa/x-ms* safe allow-macros
 ```
+
+# ENCRYPTED FILES
+
+MS Office documents can be encrypted. By default mimeguard treats these as 'evil' as it's a commonly used method to slip by anti-virus. If you wish to allow these files use 'allow-encrypted' like so:
+
+```
+Header From *@microsoft.com FileType applicationa/x-ms* safe allow-encrypted
+```
+
+# 'STRINGS' for PDF
+
+Mimeguard can examine commands used in PDF and RTF documents. Please supply the --enable-zlib configure option during the build if your system has zlib, as this will allow much better processing of PDF documents. 
+
+Almost all malicious PDF documents use javascript. Thus denying the strings /JS and /JavaScript will catch a lot of malicious docs. Generally macros in PDF are launched using the /OpenAction event that's run when the document is opened. So the config:
+
+```
+string application/pdf /JS /JavaScript /OpenAction
+```
+
+Will already catch the great majority of malicious PDFs.
+
+Other PDF commands of interest are:
+
+  * /Action         allows binding code to various document events
+  * /AA             'Additional Action', allows binding code to various document events
+	* /Launch         Launches a program from within the document!
+  * /URI            Accesses a resource at a URL (meaning you can pull code from the internet)
+  * /RichMedia      Embed shockwave flash
+  * /AcroForm       Can call javacript 
+	* /EmbeddedFile   Can embed other file types in a PDF
+	* /ASCII85Decode  Can conceal code in ASCII85 encoding (mimeguard doesn't unpack this yet)
+
+However, forbidding all of thse will likely result in jailing mails that you want to pass. Some trial and error is required to establish the best config for you.
+
+
+# 'STRINGS' for RTF
+
+I have not been able to obtain many malicious .rtf files for testing. The main strings I know of that indicate a malicious rtf are:
+
+	* \objocx     embed an OLE/ActiveX object in the document
+	* pFragments  reassemble commands/data from fragments, used for obfuscation of malicious code
+
+This gives a 'String' line of:
+
+
+```
+String application/rtf \\objocx pFragments
+```
+
+Notice the use of a double backslash before objocx. This is needed because backslash on it's own is used as an escaping character. With a single backslash '\objocx' would reduce to simply 'objocx', which would likely still work, but might result in some false positives as we're not matching the full string. pFragments has no leading '\' because it's an argument to another command.
+
+
+#WEAKNESSES AND TODO
+
+This is the initial release of mimeguard, and it has some failings. These are things I plan to fix at some future date:
+
+   * Mimeguard doesn't fully unpack .zip files, it just looks one level into them. Thus you should disallow zips within zips
+   * Mimeguard doesn't yet check for macros within Office 97 documents within a zip
+   * Mimeguard doesn't have support for .rar or .ace container files
+   * Mimeguard doesn't interrogate .html files for bad links etc
 
 
 # EXAMPLE CONFIG FILE
@@ -160,28 +229,28 @@ FileType message/rfc822 safe
 FileType application/ms-tnef safe
 FileType multipart/* safe
 FileType multipart/mixed container safe
-FileType */xml safe allow-blank-ctype
-FileType */csv safe allow-blank-ctype
-FileType text/* safe allow-blank-ctype
-FileType audio/* safe allow-blank-ctype
-FileType video/* safe allow-blank-ctype
+FileType */xml safe
+FileType */csv safe
+FileType text/* safe
+FileType audio/* safe
+FileType video/* safe
 
 
 ## xls doc ppt, these are all of type 'application/x-ole-storage'. Mimeguard recognizes that mimetype internally
 ## and does further checks on it
-FileType office/macros safe allow-blank-ctype equiv=application/x-ole-storage
-FileType application/msword safe allow-blank-ctype equiv=application/x-ole-storage
-FileType application/vnd.ms-excel safe allow-blank-ctype equiv=application/x-ole-storage
-FileType application/vnd.ms-project safe allow-blank-ctype equiv=application/x-ole-storage
+FileType office/macros safe  equiv=application/x-ole-storage
+FileType application/msword safe  equiv=application/x-ole-storage
+FileType application/vnd.ms-excel safe  equiv=application/x-ole-storage
+FileType application/vnd.ms-project safe  equiv=application/x-ole-storage
 
 
 ## xlsx docx pptx. these map to 'application/zip' which is also internally handled by Mimeguard 
-FileType application/vnd.openxmlformats-officedocument.wordprocessingml.document safe allow-blank-ctype contains=application/xml,image/*,application/x-msmetafile,application/binary,application/vml equiv=application/zip
-FileType application/vnd.openxmlformats-officedocument.spreadsheetml.sheet safe allow-blank-ctype contains=application/xml,image/*,application/x-msmetafile,application/binary,application/vml equiv=application/zip,application/x-zip
-FileType application/vnd.openxmlformats-officedocument.presentationml.presentation safe allow-blank-ctype contains=application/xml,image/*,application/x-msmetafile,application/binary,application/vml equiv=application/zip
+FileType application/vnd.openxmlformats-officedocument.wordprocessingml.document safe  contains=application/xml,image/*,application/x-msmetafile,application/binary,application/vml equiv=application/zip
+FileType application/vnd.openxmlformats-officedocument.spreadsheetml.sheet safe  contains=application/xml,image/*,application/x-msmetafile,application/binary,application/vml equiv=application/zip,application/x-zip
+FileType application/vnd.openxmlformats-officedocument.presentationml.presentation safe  contains=application/xml,image/*,application/x-msmetafile,application/binary,application/vml equiv=application/zip
 
 ## zip files. mustn't contain a zip file or an msword file (as that's a standard malware trick)
-FileType application/zip  safe container allow-blank-ctype contains=*,!application/zip,!application/msword
+FileType application/zip safe contains=*,!application/zip,!application/msword
 
 ## Naughty strings in pdf and rtf documents
 String application/pdf /JS /JavaScript /OpenAction /AA /Launch /EmbeddedFile /ASCII85Decode

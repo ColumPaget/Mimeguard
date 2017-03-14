@@ -8,6 +8,7 @@ if (SavePath)
 {
 if (Flags & FLAG_EXPORT)
 {
+	if (Flags & FLAG_DEBUG) printf("EXPORT: %s\n",Item->FileName);
   if (StrValid(Item->FileName))
   {
     *SavePath=MCopyStr(*SavePath, ExportPath, Item->FileName, NULL);
@@ -24,6 +25,7 @@ if (Flags & FLAG_EXPORT)
 else
 {
   *SavePath=CopyStr(*SavePath,".tmpfileXXXXXX");
+	if (Flags & FLAG_DEBUG) printf("TMPFILE: %s\n",*SavePath);
   MakeDirPath(*SavePath, 0700);
   fd=mkstemp(*SavePath);
 }

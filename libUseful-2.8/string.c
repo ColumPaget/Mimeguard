@@ -685,3 +685,15 @@ DestroyString(Tempstr);
 *ptr=end;
 return(TRUE);
 }
+
+
+int istext(const char *Str)
+{
+const char *ptr;
+
+for (ptr=Str; *ptr != '\0'; ptr++)
+{
+if (! isalpha(*ptr)) return(FALSE);
+}
+return(TRUE);
+}

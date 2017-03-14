@@ -148,6 +148,7 @@ int ExitVal=RULE_NONE;
 
 		if (MimeOuter)
 		{
+		MimeOuter->Flags |= MIMEFLAG_ROOT;
 		DocTypeProcess(S, MimeOuter, Path);
 		ExitVal=IsItSafe(MimeOuter);
 		OutputItem(MimeOuter, MimeOuter,0, ExitVal==RULE_SAFE);
@@ -189,15 +190,27 @@ for (i=1; i < argc; i++)
 {
 	if (StrValid(argv[i]))
 	{
-		stat(argv[i], &Stat);
-		if (S_ISREG(Stat.st_mode))
+		if (stat(argv[i], &Stat)==0)
 		{
-		ExitVal=ProcessFile(argv[i]);
+			if (S_ISREG(Stat.st_mode))
+			{
+			ExitVal=ProcessFile(argv[i]);
 
-		if (ExitVal & RULE_EVIL) Evil++;
-		else if (ExitVal & RULE_SAFE) Safe++;
-		if (ExitVal & RULE_MALFORMED) Malformed++;
-		DocCount++;
+			if (ExitVal & RULE_EVIL) Evil++;
+			else if (ExitVal & RULE_SAFE) Safe++;
+			if (ExitVal & RULE_MALFORMED) Malformed++;
+			DocCount++;
+			}
+			else 
+			{
+				ExitVal=-2;
+				printf("ERROR: Not a regular file %s\n",argv[i]);
+			}
+		}
+		else 
+		{
+			ExitVal=-1;
+			printf("ERROR: No such file %s\n",argv[i]);
 		}
 
 //		printf("exit: %d e: %d s: %d m:%d \n",ExitVal, ExitVal & RULE_EVIL, ExitVal & RULE_SAFE, ExitVal & RULE_MALFORMED);

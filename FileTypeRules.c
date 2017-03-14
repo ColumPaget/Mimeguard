@@ -62,6 +62,9 @@ char *Match=NULL, *Equiv=NULL, *Contains=NULL, *Token=NULL, *ptr;
 		if (strcasecmp(Token,"allow-blank-magic")==0) Flags |= RULE_BLANK_MAGIC;
 		if (strcasecmp(Token,"extn=magic")==0) Flags |= RULE_EXTN_MATCHES_MAGIC;
 		if (strcasecmp(Token,"ctype=magic")==0) Flags |= RULE_CONTYPE_MATCHES_MAGIC;
+		if (strcasecmp(Token,"allow-macros")==0) Flags |= RULE_ALLOW_MACROS;
+		if (strcasecmp(Token,"allow-encrypt")==0) Flags |= RULE_ALLOW_ENCRYPTED;
+		if (strcasecmp(Token,"allow-encrypted")==0) Flags |= RULE_ALLOW_ENCRYPTED;
 		if (strncasecmp(Token,"equiv=",6)==0) Equiv=CopyStr(Equiv, Token+6);
 		if (strncasecmp(Token,"contains=",9)==0) 
 		{
@@ -135,6 +138,7 @@ char *TranslateMimeTypeEquivalent(const char *MimeType)
 ListNode *Node;
 TFileRule *Rule;
 
+if (! StrValid(MimeType)) return("");
 Node=ListFindNamedItem(Rules, MimeType);
 
 if (! Node)
@@ -144,7 +148,7 @@ if (! Node)
 }
 
 Rule=(TFileRule *) Node->Item;
-if (Flags & FLAG_DEBUG) printf("TranslateMimeType: %s no -> %s\n",MimeType, Rule->Equivalent);
+if (Flags & FLAG_DEBUG) printf("TranslateMimeType: %s -> %s\n",MimeType, Rule->Equivalent);
 
 return(Rule->Equivalent);
 }
@@ -176,11 +180,13 @@ return(result);
 }
 
 
+//This only checks 'Contains' for the item
 int ProcessContainedItem(const char *Contains, TMimeItem *Item)
 {
 char *Token=NULL, *ptr, *p_pattern;
 int result=RULE_NONE;
 
+if (! StrValid(Contains)) return(RULE_NONE);
 ptr=GetToken(Contains,",",&Token,0);
 while (ptr)
 {
@@ -195,35 +201,27 @@ while (ptr)
 ptr=GetToken(ptr,",",&Token,0);
 }
 
-FileRulesConsider(Item);
-if ((result==RULE_SAFE) && (Item->RulesResult==RULE_NONE)) Item->RulesResult=result;
-else Item->RulesResult = Item->RulesResult | result;
+if (result != RULE_SAFE) Item->RulesResult=RULE_CONTAINER;
 
 DestroyString(Token);
 return(result);
 }
 
 
-int ProcessContainerItems(TFileRule *Rule, ListNode *SubItems)
+void ProcessContainerItems(TFileRule *Rule, ListNode *SubItems)
 {
 ListNode *Curr;
 TMimeItem *Item;
-int RetVal=RULE_NONE, result;
 
 Curr=ListGetNext(SubItems);
 while (Curr)
 {
 	Item=(TMimeItem *) Curr->Item;
-	result=ProcessContainedItem(Rule->Contains, Item);
-
-	if ((RetVal==RULE_NONE) || (RetVal==RULE_SAFE)) 
-	{
-		RetVal=result;
-	}
+	if (ProcessContainedItem(Rule->Contains, Item) == RULE_CONTAINER) Item->RulesResult |= RULE_CONTAINER;
+	FileRulesConsider(Item);
 	Curr=ListGetNext(Curr);
 }
 
-return(RetVal);
 }
 
 
@@ -294,8 +292,12 @@ else
 	if (Curr)
 	{
 		//Item has subitems but items of this type are not declared to be containers
-		if  (! (Rule->Flags & RULE_CONTAINER)) return(RULE_CONTAINER);
-		ProcessContainerItems(Rule, Item->SubItems);
+		if  (! (Rule->Flags & RULE_CONTAINER)) 
+		{
+			//root item can contain anything!
+			if (! (Item->Flags & MIMEFLAG_ROOT))	return(RULE_CONTAINER);
+		}
+		else ProcessContainerItems(Rule, Item->SubItems);
 	}
 	//item is a container but is empty
 	else if (Rule->Flags & RULE_CONTAINER)
@@ -304,9 +306,9 @@ else
 	}
 }
 
-
-if (Rule->Flags & RULE_SAFE) return(RULE_SAFE);
 if (Rule->Flags & RULE_EVIL) return(RULE_EVIL);
+if (Rule->Flags & (RULE_ALLOW_MACROS | RULE_ALLOW_ENCRYPTED | RULE_SAFE)) return(Rule->Flags);
+
 return(RULE_NONE);
 }
 
@@ -325,13 +327,13 @@ while (Curr)
 	Rule=(TFileRule *) Curr->Item;
 	val=FileRulesProcessRule(Rule, Item);
 
-	if (val & (RULE_SAFE | RULE_EVIL))
-	{
-		if (! (Item->RulesResult & RULE_MALFORMED))
-		{
-		if (! (Item->RulesResult & RULE_MACROS)) Item->RulesResult=val;
-		}
-	}
+	//if we got a rule that says 'evil' then set that
+	if (val & RULE_EVIL) Item->RulesResult |= (val & ~RULE_SAFE);
+	else	if ((val & RULE_SAFE) && (! (Item->RulesResult & (RULE_MALFORMED | RULE_MACROS | RULE_ENCRYPTED)))) Item->RulesResult=RULE_SAFE;
+
+	//These can be applied independantly of anything else
+	if ((val & RULE_ALLOW_MACROS) ) Item->RulesResult &= ~RULE_MACROS;
+	if ((val & RULE_ALLOW_ENCRYPTED) ) Item->RulesResult &= ~RULE_ENCRYPTED;
 	Curr=ListGetNext(Curr);
 }
 
@@ -384,6 +386,10 @@ int IsItSafe(TMimeItem *Item)
 TMimeItem *SubItem;
 ListNode *Curr;
 int result;
+
+//if we marked the item as either having macros or being encrypted, and not other rule
+//has unmarked this, then it's time to mark it 'evil' now
+if (Item->RulesResult & (RULE_MACROS | RULE_ENCRYPTED)) Item->RulesResult |= RULE_EVIL;
 
 if (Item->RulesResult & RULE_EVIL) return(Item->RulesResult);
 Curr=ListGetNext(Item->SubItems);

@@ -266,7 +266,11 @@ while (*start_ptr != '\0')
 	
 	//must handle quotes here as we don't always go into 'GetTokenMultiSepMatch' because we want to
 	//maximize speed in a simple loop
-	if ((*start_ptr=='"') || (*start_ptr=='\'')) start_ptr=traverse_quoted(start_ptr);
+  if (
+      (Flags & GETTOKEN_HONOR_QUOTES) &&
+      ((*start_ptr=='"') || (*start_ptr=='\''))
+    ) start_ptr=traverse_quoted(start_ptr);
+
 	//for speed we check of this character matches any of the start characters of our multiple separators	
 	else if (strchr(starts, *start_ptr) && GetTokenMultiSepMatch(separators,&start_ptr, &end_ptr, Flags))
 	{

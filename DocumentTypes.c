@@ -29,31 +29,39 @@ return(FALSE);
 int DocTypeProcess(STREAM *Doc, TMimeItem *Item, const char *Path)
 {
 int RetVal=RULE_NONE;
+const char *TmpPath=NULL;
 
 	if (! Item) return(RetVal);
+
+	TmpPath=CopyStr(TmpPath, Path);
+	//if the root document is not a multipart mail then we'll have to export it first
+	if ((Item->Flags & MIMEFLAG_ROOT) && (strncmp(Item->ContentType, "multipart/",10) != 0))
+	{
+		    Doc=MimeReadDocument(Doc, Item, "", &TmpPath);
+	}
 
   if (
 			(DocTypeMatch(Item, "application/zip")) ||
 			(DocTypeMatch(Item,"application/x-zip-compressed"))
 		)
   {
-    ZipFileProcess(Path, Item);
+    ZipFileProcess(TmpPath, Item);
   }
   else if (DocTypeMatch(Item,"application/pdf"))
   {
-    PDFFileProcess(Path, Item);
+    PDFFileProcess(TmpPath, Item);
   }
   else if (DocTypeMatch(Item,"application/rtf"))
   {
-    RTFFileProcess(Path, Item);
+    RTFFileProcess(TmpPath, Item);
   }
   else if (DocTypeMatch(Item,"application/x-ole-storage"))
 	{
-    OLEFileProcess(Path, Item);
+    OLEFileProcess(TmpPath, Item);
 	}
   else if (DocTypeMatch(Item,"text/html"))
   {
-    //HTMLFileProcess(Doc, Path, Item);
+    //HTMLFileProcess(Doc, TmpPath, Item);
   }
   else if (DocTypeMatch(Item,"multipart/mixed"))
   {
@@ -61,6 +69,8 @@ int RetVal=RULE_NONE;
   }
 
 FileRulesConsider(Item);
+
+DestroyString(TmpPath);
 
 return(RetVal);
 }

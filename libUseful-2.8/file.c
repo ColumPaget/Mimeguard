@@ -1002,7 +1002,11 @@ if (read_result==0)
 	}
 }
 
-if (result < 0) STREAMReadThroughProcessors(S, tmpBuff, 0);
+if (result < 0) 
+{
+	STREAMReadThroughProcessors(S, tmpBuff, 0);
+	read_result=0;
+}
 else read_result=STREAMReadThroughProcessors(S, tmpBuff, result);
 
 if (read_result < 1) 
@@ -1389,7 +1393,7 @@ return(pos);
 
 char *STREAMReadToTerminator(char *Buffer, STREAM *S, unsigned char Term)
 {
-int result, len=0, space, bytes_read=0;
+int result, len=0, avail=0, bytes_read=0;
 char *RetStr=NULL, *ptr;
 int IsClosed=FALSE;
 
@@ -1398,20 +1402,19 @@ RetStr=CopyStr(Buffer,"");
 while (1)
 {
 	len=0;
+	avail=S->InEnd-S->InStart;
 
 	//if we have bytes in buffer then check for terminator or buffer full
 	//in either case set len to transfer bytes out
-	if (S->InEnd > S->InStart)
+	if (avail > 0)
 	{
 		//if buffer full, or terminator char present, set len
 		//memchr is wicked fast, so use it
-		ptr=memchr(S->InputBuff+S->InStart,Term,S->InEnd - S->InStart);
+		ptr=memchr(S->InputBuff+S->InStart, Term, avail);
 		if (ptr) len=(ptr+1)-(S->InputBuff+S->InStart);
+		else if (IsClosed) len=avail;
 		else if (S->InStart > 0) len=0; //call 'ReadCharsToBuffer' which will move 'InStart' to start of buffer 
-		else if ((S->InEnd >= S->BuffSize) || IsClosed) 
-		{
-			len=S->InEnd-S->InStart;
-		}
+		else if (S->InEnd >= S->BuffSize) len=avail;
 	}
 	//if nothing in buffer and connection closed, return NULL
 	else if (IsClosed)
@@ -1426,7 +1429,6 @@ while (1)
 		result=STREAMReadCharsToBuffer(S);
 		switch (result)
 		{
-printf("SRC2B %d\n", result);
 		case STREAM_CLOSED: IsClosed=TRUE; break;
 		//if we timeout then just return RetStr (which will be empty) this 
 		//distinguishes timeout conditions from the stream being closed, as when

@@ -42,6 +42,7 @@ char *strlwr(char *);
 char *strrep(char *,char, char);
 char *strmrep(char *str, char *oldchars, char newchar);
 int strntol(const char **ptr, int len, int radix, long *value);
+int istext(const char *Str);
 
 char *CloneString(const char *);
 void StripTrailingWhitespace(char *);

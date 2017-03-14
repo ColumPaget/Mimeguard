@@ -6,6 +6,7 @@
 #include <sys/sysinfo.h>
 #include <sys/file.h>
 #include "base64.h"
+#include <math.h>
 #include <pwd.h>
 #include <grp.h>
 
@@ -343,45 +344,24 @@ return(GetRandomData(RetBuff,len,ALPHA_CHARS));
 
 
 
-
-
-#define KILOBYTE 1000
-#define MEGABYTE 1000000
-#define GIGABYTE 1000000000
-#define TERABYTE 1000000000000
-
-#define KIBIBYTE 1024
-#define MEGIBYTE 1024 * 1024
-#define GIGIBYTE 1024 * 1024 * 1024
-#define TERIBYTE 1024 * 1024 * 1024 *1024
-
 double FromMetric(const char *Data, int Type)
 {
 double val;
 char *ptr=NULL;
-double KAY,MEG,GIG,TERA;
-
-if (Type)
-{
-KAY=KILOBYTE;
-MEG=MEGABYTE;
-GIG=GIGABYTE;
-TERA=TERABYTE;
-}
-else
-{
-KAY=KIBIBYTE;
-MEG=MEGIBYTE;
-GIG=GIGIBYTE;
-TERA=TERIBYTE;
-}
 
 val=strtod(Data,&ptr);
 while (isspace(*ptr)) ptr++;
-if (*ptr=='k') val=val * KAY;
-if (*ptr=='M') val=val * MEG;
-if (*ptr=='G') val=val * GIG;
-if (*ptr=='T') val=val * TERA;
+switch (*ptr)
+{
+case 'k': val=val*1000; break;
+case 'M': val=val*pow(1000,2); break;
+case 'G': val=val*pow(1000,3); break;
+case 'T': val=val*pow(1000,4); break;
+case 'P': val=val*pow(1000,5); break;
+case 'E': val=val*pow(1000,6); break;
+case 'Z': val=val*pow(1000,7); break;
+case 'Y': val=val*pow(1000,8); break;
+}
 
 return(val);
 }
@@ -391,51 +371,27 @@ return(val);
 const char *ToMetric(double Size, int Type)
 {
 static char *Str=NULL;
-double val=0;
-char kMGT=' ';
+double val=0, next;
 //Set to 0 to keep valgrind happy
-double KAY=0,MEG=0,GIG=0,TERA=0;
+int i=0;
+char suffix=' ', *sufflist=" kMGTPEZY";
 
-if (Type)
+val=Size;
+
+for (i=0; sufflist[i] !='\0'; i++)
 {
-KAY=KILOBYTE;
-MEG=MEGABYTE;
-GIG=GIGABYTE;
-//TERA=TERABYTE;
+	next=pow(1000,i+1);
+	if (next > val) break;
 }
-else
+
+if ((sufflist[i] > 0) && (sufflist[i] !='\0'))
 {
-KAY=KIBIBYTE;
-MEG=MEGIBYTE;
-GIG=GIGIBYTE;
-//TERA=TERIBYTE;
+	val=val / pow(1000,i);
+  suffix=sufflist[i];
 }
-    val=Size;
-    kMGT=' ';
-/*    if (val > (TERA))
-    {
-      val=val / TERA;
-      kMGT='T';
-    }
-    else*/
-	 if (val >= (GIG))
-    {
-      val=val / GIG;
-      kMGT='G';
-    }
-    else if (val >= (MEG))
-    {
-      val=val / MEG;
-      kMGT='M';
 
-    }
-    else if (val >= (KAY))
-    {
-      val=val /  KAY;
-      kMGT='k';
-    }
 
-Str=FormatStr(Str,"%0.1f%c",(float) val,kMGT);
+Str=FormatStr(Str,"%0.1f%c",(float) val,suffix);
 return(Str);
 }
 

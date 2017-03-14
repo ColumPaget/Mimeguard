@@ -172,8 +172,8 @@ while (StrValid(Tempstr))
 	else if (strcasecmp(Token, "Content-Disposition")==0) MimeParseContentDisposition(ptr, Item);
 	else if (strcasecmp(Token, "Content-Transfer-Encoding")==0) 
 	{
-		if (strcasecmp(ptr,"base64")==0) Item->Encoding=MIMEENC_BASE64;
-		else if (strcasecmp(ptr,"quoted-printable")==0) Item->Encoding=MIMEENC_QUOTEDPRINTABLE;
+		if (strcasecmp(ptr,"base64")==0) Item->Flags |=MIMEFLAG_BASE64;
+		else if (strcasecmp(ptr,"quoted-printable")==0) Item->Flags |=MIMEFLAG_QUOTEDPRINTABLE;
 	}
 	else if (strcasecmp(Token, "Content-Location")==0) Item->FileName=CopyStr(Item->FileName, ptr);
 	else if (
@@ -223,7 +223,7 @@ while (Tempstr)
 		break;
 	}
 
-	result=DecodeDocumentLine(Tempstr, Item->Encoding, &Data);
+	result=DecodeDocumentLine(Tempstr, Item->Flags & MIMEFLAG_ENCODING, &Data);
 
 	if (Flags & FLAG_DEBUG) 
 	{
@@ -287,7 +287,7 @@ int result;
 	Tempstr=SetStrLen(Tempstr, 255);
 	STREAMPeekBytes(S,Tempstr,255);
 
-	result=DecodeDocumentLine(Tempstr, Item->Encoding, &Data);
+	result=DecodeDocumentLine(Tempstr, Item->Flags & MIMEFLAG_ENCODING, &Data);
 	
 	Item->MagicType=CopyStr(Item->MagicType, MagicLookupContentType(Data));
 
