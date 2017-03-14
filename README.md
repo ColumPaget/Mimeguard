@@ -4,7 +4,12 @@ This is a utility that attempts to provide a 'firewall' for mail files. It allow
 
 Mimeguard is intended to process email files, returning 'true' (exit code 0) if the file passes all checks, and 'false' (some non-zero exit code) if it fails a check. It's designed to be run from a script that takes actions on the basis of these exit codes. It also prints out a report of which files it passed/failed as it runs.
 
-Mimeguard and libUseful are (C) 2017 Colum Paget. They are released under the GPL so you may do anything with them that the GPL allows.
+I have been using mimeguard and getting good results with it for some time now, but it still has some missing features. Please read the section 'WEAKNESSES AND TODO' before using this software.
+
+Mimeguard and libUseful are (C) 2017 Colum Paget. They are released under the GPL so you may do anything with them that the GPL allows. 
+
+Mimeguard is free software and comes with no warranties or guarentees of any kind.
+
 
 #INSTALL
 
@@ -207,6 +212,7 @@ This is the initial release of mimeguard, and it has some failings. These are th
    * Mimeguard doesn't yet check for macros within Office 97 documents within a zip
    * Mimeguard doesn't have support for .rar or .ace container files
    * Mimeguard doesn't interrogate .html files for bad links etc
+   * Mimeguard doesn't unpack ASCII85 encoded data within .pdf files.
 
 
 # EXAMPLE CONFIG FILE
