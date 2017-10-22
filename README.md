@@ -67,6 +67,14 @@ Path to IP registrar files. These are files containing lists of IP ranges and th
 
 When a URL rule is called all the matching files will be checked for an entry for the IP address. Unfortunately this currently only works for IPv4, IPv6 lookup is planned in a future release.
 
+Currently region files can be found at:
+
+http://ftp.lacnic.net/pub/stats/lacnic/delegated-lacnic-latest","delegated-lacnic-latest
+http://ftp.ripe.net/ripe/stats/delegated-ripencc-latest","delegated-ripencc-latest
+http://ftp.arin.net/pub/stats/arin/delegated-arin-extended-latest","delegated-arin-extended-latest
+http://ftp.afrinic.net/pub/stats/afrinic/delegated-afrinic-latest","delegated-afrinic-latest
+http://ftp.apnic.net/stats/apnic/delegated-apnic-latest","delegated-apnic-latest
+
 **URLRule <result> <type> <arg>**
 A rule defining behavior to take on a URL being discovered in an HTML file. `<type>` defines the type of checking to take place. `<result>` can have the values 'safe' and 'evil'. The `<arg>` value is dependant on the type of checking.
 
@@ -76,7 +84,7 @@ available `<type>` values are:
    * host     `<arg>` is a comma seperated list of hostnames (fnmatch style wildcards allowed)
    * iplist   `<arg>` is a path to a file containing a list of IP addresses
    * hostlist `<arg>` is a path to a file containing a list of hostnames
-   * region   `<arg>` is either a registrar name (arin, ripencc, afrinic, apnic, latnic) or a country code (GB, DE, US, RU, CN, etc).
+   * region   `<arg>` is either a registrar name (arin, ripencc, afrinic, apnic, lacnic) or a country code (GB, DE, US, RU, CN, etc).
 
 URLRules are processed in order. If no matching rule is found then the url is taken to be 'safe'. If you want a default 'evil' rule then start your rules with:
 
