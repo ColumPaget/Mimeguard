@@ -1,4 +1,4 @@
-#MIMEGUARD
+# MIMEGUARD
 
 This is a utility that attempts to provide a 'firewall' for mail files. It allows the user to create policies governing which files are allowed within mails. It can also analyze OLE documents for macros, PDF documents for javascript or embedded files, and RTF documents for embedded files. I created it after seeing too many virus-checkers allow files ending in extensions like .exe, .js, .bat, and so on, or word documents containing macros, or whatever.
 
@@ -11,7 +11,7 @@ Mimeguard and libUseful are (C) 2017 Colum Paget. They are released under the GP
 Mimeguard is free software and comes with no warranties or guarentees of any kind.
 
 
-#INSTALL
+# INSTALL
 
 The usual proceedure:
 
@@ -49,7 +49,7 @@ Options are:
 When run on a console mimeguard will print out a color-coded breakdown of files/mime-types, highlighting any that it considers safe/not safe. This allows easy testing of changes made to your configuration file.
 
 
-#CONFIGURATION
+# CONFIGURATION
 
 Mimeguard is configured using a single config file 'mimeguard.conf'. An example config file is provided at the end of this document. The following entries can occur in the config file
 
@@ -282,7 +282,7 @@ String application/rtf \\objocx pFragments
 Notice the use of a double backslash before objocx. This is needed because backslash on it's own is used as an escaping character. With a single backslash '\objocx' would reduce to simply 'objocx', which would likely still work, but might result in some false positives as we're not matching the full string. pFragments has no leading '\' because it's an argument to another command.
 
 
-#WEAKNESSES AND TODO
+# WEAKNESSES AND TODO
 
 This is the initial release of mimeguard, and it has some failings. These are things I plan to fix at some future date:
 
