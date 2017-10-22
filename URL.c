@@ -141,7 +141,7 @@ int URLRuleCheck(TMimeItem *Item, const char *URL)
     if (! StrValid(ptr)) 
 		{
 			ptr=LookupHostIP(Host);
-			if (StrValid(ptr)) SetDetailVar(g_KeyValueStore, Host, IP, KV_IP, time(NULL) + 5);
+			if (StrValid(ptr)) SetDetailVar(g_KeyValueStore, Host, ptr, KV_IP, time(NULL) + 5);
 		}
 		IP=CopyStr(IP, ptr);
 
