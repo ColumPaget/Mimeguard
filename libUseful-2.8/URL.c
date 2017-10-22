@@ -102,7 +102,7 @@ void ParseURL(const char *URL, char **Proto, char **Host, char **Port, char **Us
     }
     else ptr=URL;
 
-    while (*ptr=='/') ptr++;
+    while (ptr && (*ptr=='/')) ptr++;
 
     if (ptr)
     {

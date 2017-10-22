@@ -131,10 +131,19 @@ int URLRuleCheck(TMimeItem *Item, const char *URL)
     char *Proto=NULL, *Host=NULL, *PortStr=NULL, *Doc=NULL, *IP=NULL;
     char *RegionRegistrar=NULL, *RegionCountry=NULL;
     char *Tempstr=NULL;
+		const char *ptr;
     int result=FALSE;
 
     ParseURL(URL, &Proto, &Host, &PortStr, NULL, NULL, &Doc, NULL);
-    IP=CopyStr(IP, LookupHostIP(Host));
+		if (StrValid(Host))
+		{
+		ptr=GetTypedVar(g_KeyValueStore, Host, KV_IP);
+    if (! StrValid(ptr)) 
+		{
+			ptr=LookupHostIP(Host);
+			if (StrValid(ptr)) SetDetailVar(g_KeyValueStore, Host, IP, KV_IP, time(NULL) + 5);
+		}
+		IP=CopyStr(IP, ptr);
 
     if (g_Flags & FLAG_DEBUG) printf("URL: %s %s\n",IP, URL);
 
@@ -218,7 +227,7 @@ int URLRuleCheck(TMimeItem *Item, const char *URL)
         Item->RulesResult &= ~RULE_SAFE;
         Item->RulesResult |= RULE_EVIL | RULE_MACROS;
     }
-
+		}
 
     DestroyString(RegionRegistrar);
     DestroyString(RegionCountry);
