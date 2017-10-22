@@ -316,7 +316,7 @@ int FileRulesProcessRule(TFileRule *Rule, TMimeItem *Item)
         //item is a container but is empty
         else if (Rule->Flags & RULE_CONTAINER)
         {
-            return(Item->RulesResult | RULE_EMPTY | RULE_EVIL);
+           if (! (Rule->Flags & RULE_ALLOW_EMPTY)) return(Item->RulesResult | RULE_EMPTY | RULE_EVIL);
         }
     }
 

@@ -116,7 +116,7 @@ urlrule iplist /etc/netspork/badips.blocklist evil
 Binds a list of file extensions to a particular mime-type, overriding information from the apache mime.types file.
 
 **FileType <mime type> <commands>**
-This config does most of the work. The 'mime type' argument is an fnmatch style pattern that matches against a mime type. For a given pattern one can supply the arguments 'safe', 'evil', 'container', 'contains', and 'equiv'. 'safe' and 'evil' are equivalent to 'ACCEPT' and 'REJECT' in an iptables firewall. mimeguard will return '0' (which is 'true' in bash scripts) if a file and all it's contained files are declared 'safe'. If will return various non-zero values (all of which count as 'false') if the file, or any of it's contents, match against an 'evil' rule. For example:
+This config does most of the work. The 'mime type' argument is an fnmatch style pattern that matches against a mime type. For a given pattern one can supply the arguments 'safe', 'evil', 'container', 'contains', and 'equiv'. 'safe' and 'evil' are equivalent to 'ACCEPT' and 'REJECT' in an iptables firewall. mimeguard will return '0' (which is 'true' in bash scripts) if a file and all its contained files are declared 'safe'. If will return various non-zero values (all of which count as 'false') if the file, or any of it's contents, match against an 'evil' rule. For example:
 
 ```
 FileType * evil
@@ -235,6 +235,15 @@ MS Office documents can be encrypted. By default mimeguard treats these as 'evil
 Header From *@microsoft.com FileType applicationa/x-ms* safe allow-encrypted
 ```
 
+# HTML FILES
+
+Html files are a bit of a special case. They can be containers, because links within the file can point to a remote document, effectively 'containing' that document. However, mimeguard normally throws an error if a container is empty, but HTML can be used purely for formatting, without any links. This means that for HTML documents you need a config line like:
+
+```
+FileType text/html safe container allow-empty
+```
+
+
 # 'STRINGS' for HTML
 Mimeguard can examine tags used in HTML documents. Normally you would use th following command to rule out strings that shouldn't be in an email. HTML in an email should just be formatting, it shouldn't contain any scripting or embedded objects. Both 'link' and 'iframe' can be used to drag more HTML into an HTML document from a remote source, so these should really be ruled out to as otherwise a malicious link could be put in such a remote document to get it past mimeguard.
 
@@ -332,7 +341,7 @@ FileType audio/* safe
 FileType video/* safe
 
 ### must define 'html' as a container so that links within an html doc get examined as files
-FileType text/html container safe
+FileType text/html container safe allow-empty
 
 ## xls doc ppt, these are all of type 'application/x-ole-storage'. Mimeguard recognizes that mimetype internally
 ## and does further checks on it
