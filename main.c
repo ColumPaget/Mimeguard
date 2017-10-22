@@ -11,7 +11,7 @@
 #include "ConfigFile.h"
 #include "DocumentTypes.h"
 
-#define VERSION "2.0"
+#define VERSION "2.1"
 char *ConfigPath=NULL;
 
 void PrintUsage()
