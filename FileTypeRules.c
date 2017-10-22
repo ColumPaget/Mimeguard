@@ -65,6 +65,7 @@ void FileTypeRuleParse(const char *Data, int Flags)
         if (strcasecmp(Token,"allow-blank-magic")==0) Flags |= RULE_BLANK_MAGIC;
         if (strcasecmp(Token,"extn=magic")==0) Flags |= RULE_EXTN_MATCHES_MAGIC;
         if (strcasecmp(Token,"ctype=magic")==0) Flags |= RULE_CONTYPE_MATCHES_MAGIC;
+        if (strcasecmp(Token,"allow-empty")==0) Flags |= RULE_ALLOW_EMPTY;
         if (strcasecmp(Token,"allow-macros")==0) Flags |= RULE_ALLOW_MACROS;
         if (strcasecmp(Token,"allow-encrypt")==0) Flags |= RULE_ALLOW_ENCRYPTED;
         if (strcasecmp(Token,"allow-encrypted")==0) Flags |= RULE_ALLOW_ENCRYPTED;
@@ -320,7 +321,7 @@ int FileRulesProcessRule(TFileRule *Rule, TMimeItem *Item)
     }
 
     if (Rule->Flags & RULE_EVIL) return(RULE_EVIL);
-    if (Rule->Flags & (RULE_ALLOW_MACROS | RULE_ALLOW_ENCRYPTED | RULE_SAFE)) return(Rule->Flags);
+    if (Rule->Flags & (RULE_ALLOW_MACROS | RULE_ALLOW_EMPTY | RULE_ALLOW_ENCRYPTED | RULE_SAFE)) return(Rule->Flags);
 
     return(RULE_NONE);
 }
@@ -347,6 +348,7 @@ int FileRulesConsider(TMimeItem *Item)
         //These can be applied independantly of anything else
         if ((val & RULE_STRIP) ) Item->RulesResult |= RULE_STRIP;
         if ((val & RULE_ALLOW_MACROS) ) Item->RulesResult &= ~RULE_MACROS;
+        if ((val & RULE_ALLOW_EMPTY) ) Item->RulesResult &= ~RULE_EMPTY;
         if ((val & RULE_ALLOW_ENCRYPTED) ) Item->RulesResult &= ~RULE_ENCRYPTED;
         Curr=ListGetNext(Curr);
     }
