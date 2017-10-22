@@ -29,7 +29,9 @@ Please supply '--enable-zlib' if your system has this library, as this will enab
 
 # INVOCATION
 
-**mimeguard <options> <paths>**
+```
+mimeguard <options> <paths>
+```
 
 Options are:
 ```
@@ -53,16 +55,16 @@ When run on a console mimeguard will print out a color-coded breakdown of files/
 
 Mimeguard is configured using a single config file 'mimeguard.conf'. An example config file is provided at the end of this document. The following entries can occur in the config file
 
-**MagicsFile <path>**
-**MagicsFiles <path>**
+**MagicsFile <path>**   
+**MagicsFiles <path>**   
 Path to the 'magics' file that's used to identify filetypes. (This file is part of the apache http server distribution).  `<path>` can be a comma-separated list of paths, see '#CONFIG PATHS' for more details.
 
-**MimeTypesFile <path>**
-**MimeTypesFiles <path>**
+**MimeTypesFile <path>**   
+**MimeTypesFiles <path>**   
 Path to the 'mime.types' file that's used to identify filetypes from file extensions. (This file is part of the apache http server distribution).  `<path>` can be a comma-separated list of paths, see '#CONFIG PATHS' for more details.
 
-**RegionFile <path>**
-**RegionFiles <path>**
+**RegionFile <path>**   
+**RegionFiles <path>**   
 Path to IP registrar files. These are files containing lists of IP ranges and the countries they are assigned to. They are used by the 'region' URL rule to look up the region for a given IP address.  `<path>` can be a comma-separated list of paths, see '#CONFIG PATHS' for more details.
 
 When a URL rule is called all the matching files will be checked for an entry for the IP address. Unfortunately this currently only works for IPv4, IPv6 lookup is planned in a future release.
