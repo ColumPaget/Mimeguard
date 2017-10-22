@@ -65,7 +65,7 @@ libUseful-2.8/libUseful-2.8.a:
 	$(MAKE) -C libUseful-2.8
 
 clean:
-	@rm -f *.o */*.o */*.a */*.so mimeguard.exe
+	@rm -f *.o */*.o */*.a */*.so mimeguard
 
 install: mimeguard
 	install-sh mimeguard $(bindir)
