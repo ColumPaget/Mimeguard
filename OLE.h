@@ -1,5 +1,5 @@
-#ifndef FILEFILTER_OLE_H
-#define FILEFILTER_OLE_H
+#ifndef MIMEGUARD_OLE_H
+#define MIMEGUARD_OLE_H
 
 #include "common.h"
 #include "Mime.h"

@@ -23,7 +23,7 @@ make install
 
 Should work. The 'make install' stage will have to be done as root. The default install paths will put the mimeguard exectuable in /usr/local/bin and the default config file /usr/local/etc. This can be changed by passing `--prefix=<path>` to configure. If, like most people, you want to put mimeguard in /usr/bin but the config file in /etc then use `--prefix=/usr --sysconfdir=/etc`
 
-Please supply '--enable-zlib' if your system has this library, as with this library mimeguard will be able to look deeper into PDF documents.
+Please supply '--enable-zlib' if your system has this library, as this will enable mimeguard to look deeper into PDF documents.
 
 
 
@@ -54,10 +54,53 @@ When run on a console mimeguard will print out a color-coded breakdown of files/
 Mimeguard is configured using a single config file 'mimeguard.conf'. An example config file is provided at the end of this document. The following entries can occur in the config file
 
 **MagicsFile <path>**
-Path to the 'magics' file that's used to identify filetypes. (This file is part of the apache http server distribution).
+**MagicsFiles <path>**
+Path to the 'magics' file that's used to identify filetypes. (This file is part of the apache http server distribution).  `<path>` can be a comma-separated list of paths, see '#CONFIG PATHS' for more details.
 
 **MimeTypesFile <path>**
-Path to the 'mime.types' file that's used to identify filetypes from file extensions. (This file is part of the apache http server distribution).
+**MimeTypesFiles <path>**
+Path to the 'mime.types' file that's used to identify filetypes from file extensions. (This file is part of the apache http server distribution).  `<path>` can be a comma-separated list of paths, see '#CONFIG PATHS' for more details.
+
+**RegionFile <path>**
+**RegionFiles <path>**
+Path to IP registrar files. These are files containing lists of IP ranges and the countries they are assigned to. They are used by the 'region' URL rule to look up the region for a given IP address.  `<path>` can be a comma-separated list of paths, see '#CONFIG PATHS' for more details.
+
+When a URL rule is called all the matching files will be checked for an entry for the IP address. Unfortunately this currently only works for IPv4, IPv6 lookup is planned in a future release.
+
+**URLRule <result> <type> <arg>**
+A rule defining behavior to take on a URL being discovered in an HTML file. `<type>` defines the type of checking to take place. `<result>` can have the values 'safe' and 'evil'. The `<arg>` value is dependant on the type of checking.
+
+available `<type>` values are: 
+
+   * ip       `<arg>` is a comma separated list of ip addresses (fnmatch style wildcards allowed)
+   * host     `<arg>` is a comma seperated list of hostnames (fnmatch style wildcards allowed)
+   * iplist   `<arg>` is a path to a file containing a list of IP addresses
+   * hostlist `<arg>` is a path to a file containing a list of hostnames
+   * region   `<arg>` is either a registrar name (arin, ripencc, afrinic, apnic, latnic) or a country code (GB, DE, US, RU, CN, etc).
+
+URLRules are processed in order. If no matching rule is found then the url is taken to be 'safe'. If you want a default 'evil' rule then start your rules with:
+
+```
+urlrule evil host *
+```
+
+An example set of urlrules:
+
+```
+urlrule iplist /etc/netspork/badips.blocklist evil
+urlrule region ripencc evil
+urlrule region apnic evil
+urlrule region DE safe
+```
+
+This would check the IP Address associated with the URL against a list of IP addresses in the file `/etc/netspork/badips.blocklist`. If found in the file the url would be considered 'evil'. Then region rules are checked. If the IP associated with the URL is found to be in the regions covered by the apnic or ripencc registrars (asia pacific and europe) then it will be considered evil UNLESS it's Germany (country code DE) which is considered safe. Note that in this config german IPs are considered safe even if in the blocklist file. This is because later rules override earlier ones. If you want all ips in the blocklist file to be considered evil, even if they're in Germany, then you want this config:
+
+```
+urlrule region ripencc evil
+urlrule region apnic evil
+urlrule region DE safe
+urlrule iplist /etc/netspork/badips.blocklist evil
+```
 
 **Extn <mime type> <extn> ...**
 Binds a list of file extensions to a particular mime-type, overriding information from the apache mime.types file.
@@ -82,22 +125,32 @@ FileType multipart/mixed container safe
 
 This not only declares the multipart/mixed mimetype to be safe, but also to be a container. Mimeguard will thus investigate files within this mimetype. If any of these subfiles match 'evil' then mimeguard will return false.
 
-Often emails also use a 'multipart/alternative' mime-type to provide alternative text for mail clients that do/don't support HTML. Thus our config expands to:
+However, in addition to 'multipart/mixed' there is also 'multipart/related' which is pretty much the same thing. So now we have a rule:
 
 ```
 FileType * evil
 FileType text/* safe
-FileType multipart/* safe
-FileType multipart/mixed container safe
+FileType multipart/* container safe
 ```
+
+But often emails also use a 'multipart/alternative' mime-type to provide alternative text for mail clients that do/don't support HTML. This isn't a container in the sense of having files within it, it's just a block of text. However, if all 'multipart' document types are declared as containers mimeguard will fail 'multipart/alternative' as an empty container. To handle this we have:
+
+```
+FileType * evil
+FileType text/* safe
+FileType multipart/* container safe
+FileType multipart/alternative safe
+```
+
+Later rules override previous ones, so all multipart documents will be treated as containers except multipart/alternative.
 
 Finally there are a couple of other benign mime-types that can appear in emails:
 
 ```
 FileType * evil
 FileType text/* safe
-FileType multipart/* safe
-FileType multipart/mixed container safe
+FileType multipart/* container safe
+FileType multipart/alternative safe
 FileType message/rfc822 safe
 FileType application/ms-tnef safe
 ```
@@ -137,13 +190,24 @@ String application/rtf \\objocx pFragments
 ```
 
 **Header <header type> <header argument> <config>**
-The 'Header' config can be used to match against an email header, and trigger a config option that overrides previously set options. The <header type> argument is an email header type like "To", "From" or "Subject". The <header argument> option is an fnmatch style pattern that matches against the variable part of the header. The config is a 'FileType' or 'String' command. For example:
+The 'Header' config can be used to match against an email header, and trigger a config option that overrides previously set options. The `<header type>` argument is an email header type like "To", "From" or "Subject". The `<header argument>` option is an fnmatch style pattern that matches against the variable part of the header. The config is a 'FileType' or 'String' command. For example:
 
 ```
 Header From *@microsoft.com FileType applicationa/x-ms* safe
 ```
 
 This allows different configs for different email senders/recipients.
+
+# CONFIG PATHS
+
+The MagicsFile, MimeTypesFile and RegionFile configuration entries all take a 'path' argument. This 'path' can actually be a comma-separated list of paths, and it can include fnmatch-style wildcards. For example:
+
+```
+MagicsFile /etc/magic,/usr/local/etc/magic
+RegionFiles /etc/ip-regions/*,/usr/local/etc/ip-regions/*
+```
+
+Each entry in a path list can also have a 'protocol' prefix. Currently the protocol can only have the value 'mmap:'. If a path has an 'mmap' prefix then the file will be mapped into shared memory. This allows many applications using this file to share a copy of it in memory, granting them faster access as they don't need to load it from disk. However, for this to work some application has to keep the file permanently mapped into memory.
 
 # MACROS
 
@@ -161,9 +225,16 @@ MS Office documents can be encrypted. By default mimeguard treats these as 'evil
 Header From *@microsoft.com FileType applicationa/x-ms* safe allow-encrypted
 ```
 
+# 'STRINGS' for HTML
+Mimeguard can examine tags used in HTML documents. Normally you would use th following command to rule out strings that shouldn't be in an email. HTML in an email should just be formatting, it shouldn't contain any scripting or embedded objects. Both 'link' and 'iframe' can be used to drag more HTML into an HTML document from a remote source, so these should really be ruled out to as otherwise a malicious link could be put in such a remote document to get it past mimeguard.
+
+```
+String text/html script object embed applet link iframe
+```
+
 # 'STRINGS' for PDF
 
-Mimeguard can examine commands used in PDF and RTF documents. Please supply the --enable-zlib configure option during the build if your system has zlib, as this will allow much better processing of PDF documents. 
+Mimeguard can examine commands used in PDF documents. Please supply the --enable-zlib configure option during the build if your system has zlib, as this will allow much better processing of PDF documents. 
 
 Almost all malicious PDF documents use javascript. Thus denying the strings /JS and /JavaScript will catch a lot of malicious docs. Generally macros in PDF are launched using the /OpenAction event that's run when the document is opened. So the config:
 
@@ -196,7 +267,6 @@ I have not been able to obtain many malicious .rtf files for testing. The main s
 
 This gives a 'String' line of:
 
-
 ```
 String application/rtf \\objocx pFragments
 ```
@@ -211,7 +281,6 @@ This is the initial release of mimeguard, and it has some failings. These are th
    * Mimeguard doesn't fully unpack .zip files, it just looks one level into them. Thus you should disallow zips within zips
    * Mimeguard doesn't yet check for macros within Office 97 documents within a zip
    * Mimeguard doesn't have support for .rar or .ace container files
-   * Mimeguard doesn't interrogate .html files for bad links etc
    * Mimeguard doesn't unpack ASCII85 encoded data within .pdf files.
 
 
@@ -221,6 +290,17 @@ This is the initial release of mimeguard, and it has some failings. These are th
 # Include standard 'magic' and 'mime.types' files for identifying files
 MagicsFile /etc/magic
 MimeTypesFile /etc/mime.types
+
+#you will need to uncomment this and provide these files to use 'region' url rules
+#RegionFiles /etc/ip-regions/*
+
+urlrule iplist /etc/myblocklist.lst evil
+
+#in this example these are places we'd never expect to receive mail from. You will need to uncomment 'RegionFiles' and supply
+#IP-Registrar files
+urlrule region afrinic evil
+urlrule region apnic evil
+urlrule region ru evil
 
 # some file extension to mime-type mappings that might not be in /etc/mime.types
 Extn application/script scr ws wsf wsc wsh cmd
@@ -233,14 +313,16 @@ FileType * evil
 # now start listing mime-types that are safe
 FileType message/rfc822 safe
 FileType application/ms-tnef safe
-FileType multipart/* safe
-FileType multipart/mixed container safe
+FileType multipart/* safe container
+FileType multipart/alternative safe
 FileType */xml safe
 FileType */csv safe
 FileType text/* safe
 FileType audio/* safe
 FileType video/* safe
 
+### must define 'html' as a container so that links within an html doc get examined as files
+FileType text/html container safe
 
 ## xls doc ppt, these are all of type 'application/x-ole-storage'. Mimeguard recognizes that mimetype internally
 ## and does further checks on it
@@ -258,9 +340,10 @@ FileType application/vnd.openxmlformats-officedocument.presentationml.presentati
 ## zip files. mustn't contain a zip file or an msword file (as that's a standard malware trick)
 FileType application/zip safe contains=*,!application/zip,!application/msword
 
-## Naughty strings in pdf and rtf documents
+## Naughty strings in pdf, rtf and html documents
 String application/pdf /JS /JavaScript /OpenAction /AA /Launch /EmbeddedFile /ASCII85Decode
 String application/rtf \\objocx pFragments
+String text/html script object embed link applet iframe
 
 ```
 

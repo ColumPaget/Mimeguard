@@ -1,5 +1,5 @@
-#ifndef FILEFILTER_PDF_H
-#define FILEFILTER_PDF_H
+#ifndef MIMEGUARD_PDF_H
+#define MIMEGUARD_PDF_H
 
 #include "common.h"
 #include "Mime.h"

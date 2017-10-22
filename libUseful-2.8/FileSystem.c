@@ -1,163 +1,185 @@
 #include "FileSystem.h"
+#include "Errors.h"
 #include <glob.h>
+//#include <sys/ioctl.h>
+//#include <sys/resource.h>
+#include <sys/mount.h>
+
+#ifdef HAVE_XATTR
+#include <sys/xattr.h>
+#endif
+
+#ifdef USE_FANOTIFY
+#include <sys/fanotify.h>
+#endif
+
+
 
 const char *GetBasename(const char *Path)
 {
-const char *ptr;
-int len;
+    const char *ptr;
+    int len;
 
-len=StrLen(Path);
-if (len==0) return("");
-if (len==1) return(Path);
+    len=StrLen(Path);
+    if (len==0) return("");
+    if (len==1) return(Path);
 
-ptr=Path+len-1;
-while (ptr > Path)
-{
-  if ((*ptr=='/') && (*(ptr+1) != '\0')) break;
-  ptr--;
-}
+    ptr=Path+len-1;
+    while (ptr > Path)
+    {
+        if ((*ptr=='/') && (*(ptr+1) != '\0')) break;
+        ptr--;
+    }
 
-if ((*ptr=='/') && (*(ptr+1) != '\0')) ptr++;
+    if ((*ptr=='/') && (*(ptr+1) != '\0')) ptr++;
 
-return(ptr);
+    return(ptr);
 }
 
 
 char *SlashTerminateDirectoryPath(char *DirPath)
 {
-char *ptr, *RetStr=NULL;
+    char *ptr, *RetStr=NULL;
 
-if (! DirPath) return(CopyStr(DirPath,"/"));
-RetStr=DirPath;
-ptr=RetStr+StrLen(RetStr)-1;
-if (*ptr != '/') RetStr=AddCharToStr(RetStr,'/');
+    if (! StrValid(DirPath)) return(CopyStr(DirPath,"/"));
+    RetStr=DirPath;
+    ptr=RetStr+StrLen(RetStr)-1;
+    if (*ptr != '/') RetStr=AddCharToStr(RetStr,'/');
 
-return(RetStr);
+    return(RetStr);
 }
 
 
 char *StripDirectorySlash(char *DirPath)
 {
-char *ptr;
+    char *ptr;
 
 //don't strip '/' (root dir)
-if (StrLen(DirPath)==1) return(DirPath);
-ptr=DirPath+StrLen(DirPath)-1;
+    if (! StrValid(DirPath)) return(DirPath);
+    if (strcmp(DirPath,"/")==0) return(DirPath);
+    ptr=DirPath+StrLen(DirPath)-1;
 
-if (*ptr == '/') *ptr='\0';
+    if (*ptr == '/') *ptr='\0';
 
-return(DirPath);
+    return(DirPath);
 }
 
 
 int MakeDirPath(const char *Path, int DirMask)
 {
- const char *ptr;
- char *Tempstr=NULL;
- int result=-1;
+    const char *ptr;
+    char *Tempstr=NULL;
+    int result=-1;
 
- ptr=Path;
- if (*ptr=='/') ptr++;
- ptr=strchr(ptr, '/');
- while (ptr)
- {
-   Tempstr=CopyStrLen(Tempstr,Path,ptr-Path);
-   result=mkdir(Tempstr, DirMask);
-   if ((result==-1) && (errno != EEXIST)) break;
-   ptr=strchr(++ptr, '/');
- }
- DestroyString(Tempstr);
- if (result==0) return(TRUE);
- return(FALSE);
+    ptr=Path;
+    if (*ptr=='/') ptr++;
+    ptr=strchr(ptr, '/');
+    while (ptr)
+    {
+        Tempstr=CopyStrLen(Tempstr,Path,ptr-Path);
+        result=mkdir(Tempstr, DirMask);
+        if ((result==-1) && (errno != EEXIST))
+        {
+            RaiseError(ERRFLAG_ERRNO, "MakeDirPath", "cannot mkdir '%s'",Tempstr);
+            break;
+        }
+        ptr=strchr(++ptr, '/');
+    }
+    DestroyString(Tempstr);
+    if (result==0) return(TRUE);
+    return(FALSE);
 }
 
 
 
 int FileChangeExtension(const char *FilePath, const char *NewExt)
 {
-char *ptr;
-char *Tempstr=NULL;
-int result;
+    char *ptr;
+    char *Tempstr=NULL;
+    int result;
 
-Tempstr=CopyStr(Tempstr,FilePath);
-ptr=strrchr(Tempstr,'/');
-if (!ptr) ptr=Tempstr;
-ptr=strrchr(ptr,'.');
-if (! ptr) ptr=Tempstr+StrLen(Tempstr);
-*ptr='\0';
+    Tempstr=CopyStr(Tempstr,FilePath);
+    ptr=strrchr(Tempstr,'/');
+    if (!ptr) ptr=Tempstr;
+    ptr=strrchr(ptr,'.');
+    if (! ptr) ptr=Tempstr+StrLen(Tempstr);
+    *ptr='\0';
 
-if (*NewExt=='.') Tempstr=CatStr(Tempstr,NewExt);
-else Tempstr=MCatStr(Tempstr,".",NewExt,NULL);
-result=rename(FilePath,Tempstr);
+    if (*NewExt=='.') Tempstr=CatStr(Tempstr,NewExt);
+    else Tempstr=MCatStr(Tempstr,".",NewExt,NULL);
+    result=rename(FilePath,Tempstr);
+    if (result !=0) RaiseError(ERRFLAG_ERRNO, "FileChangeExtension", "cannot rename '%s' to '%s'",FilePath, Tempstr);
 
-DestroyString(Tempstr);
-if (result==0) return(TRUE);
-else return(FALSE);
+    DestroyString(Tempstr);
+    if (result==0) return(TRUE);
+    else return(FALSE);
 }
 
 
 int FindFilesInPath(const char *File, const char *Path, ListNode *Files)
 {
-char *Tempstr=NULL, *CurrPath=NULL, *ptr;
-int i;
-glob_t Glob;
+    char *Tempstr=NULL, *CurrPath=NULL;
+    const char *ptr;
+    int i;
+    glob_t Glob;
 
-if (*File=='/')
-{
-	CurrPath=CopyStr(CurrPath,"");
-	ptr=""; //so we execute once below
-}
-else ptr=GetToken(Path,":",&CurrPath,0);
-while (ptr)
-{
-CurrPath=SlashTerminateDirectoryPath(CurrPath);
-Tempstr=MCopyStr(Tempstr,CurrPath,File,NULL);
+    if (*File=='/')
+    {
+        CurrPath=CopyStr(CurrPath,"");
+        ptr=""; //so we execute once below
+    }
+    else ptr=GetToken(Path,":",&CurrPath,0);
+    while (ptr)
+    {
+        CurrPath=SlashTerminateDirectoryPath(CurrPath);
+        Tempstr=MCopyStr(Tempstr,CurrPath,File,NULL);
 
-glob(Tempstr,0,0,&Glob);
-for (i=0; i < Glob.gl_pathc; i++) ListAddItem(Files,CopyStr(NULL,Glob.gl_pathv[i]));
-globfree(&Glob);
+        glob(Tempstr,0,0,&Glob);
+        for (i=0; i < Glob.gl_pathc; i++) ListAddItem(Files,CopyStr(NULL,Glob.gl_pathv[i]));
+        globfree(&Glob);
 
-ptr=GetToken(ptr,":",&CurrPath,0);
-}
+        ptr=GetToken(ptr,":",&CurrPath,0);
+    }
 
-DestroyString(Tempstr);
-DestroyString(CurrPath);
+    DestroyString(Tempstr);
+    DestroyString(CurrPath);
 
-return(ListSize(Files));
+    return(ListSize(Files));
 }
 
 
 
 char *FindFileInPath(char *InBuff, const char *File, const char *Path)
 {
-char *Tempstr=NULL, *CurrPath=NULL, *RetStr=NULL, *ptr;
+    char *Tempstr=NULL, *CurrPath=NULL, *RetStr=NULL;
+    const char *ptr;
 
-RetStr=CopyStr(InBuff,"");
+    RetStr=CopyStr(InBuff,"");
 
-if (*File=='/')
-{
-	CurrPath=CopyStr(CurrPath,"");
-	ptr=""; //so we execute once below
-}
-else ptr=GetToken(Path,":",&CurrPath,0);
+    if (*File=='/')
+    {
+        CurrPath=CopyStr(CurrPath,"");
+        ptr=""; //so we execute once below
+    }
+    else ptr=GetToken(Path,":",&CurrPath,0);
 
-while (ptr)
-{
-CurrPath=SlashTerminateDirectoryPath(CurrPath);
-Tempstr=MCopyStr(Tempstr,CurrPath,File,NULL);
-if (access(Tempstr,F_OK)==0) 
-{
-RetStr=CopyStr(RetStr,Tempstr);
-break;
-}
+    while (ptr)
+    {
+        CurrPath=SlashTerminateDirectoryPath(CurrPath);
+        Tempstr=MCopyStr(Tempstr,CurrPath,File,NULL);
+        if (access(Tempstr,F_OK)==0)
+        {
+            RetStr=CopyStr(RetStr,Tempstr);
+            break;
+        }
 
-ptr=GetToken(ptr,":",&CurrPath,0);
-}
+        ptr=GetToken(ptr,":",&CurrPath,0);
+    }
 
-DestroyString(Tempstr);
-DestroyString(CurrPath);
+    DestroyString(Tempstr);
+    DestroyString(CurrPath);
 
-return(RetStr);
+    return(RetStr);
 }
 
 
@@ -165,144 +187,394 @@ return(RetStr);
 /* we can stat it, this is useful for checking pid files etc).              */
 int FileExists(const char *FileName)
 {
-struct stat StatData;
+    struct stat StatData;
 
-if (stat(FileName,&StatData) == 0) return(1);
-else return(0);
+    if (stat(FileName,&StatData) == 0) return(1);
+    else return(0);
 }
 
 
 int FileChOwner(const char *FileName, const char *Owner)
 {
-int uid, result;
+    int uid, result;
 
-uid=LookupUID(Owner);
-if (uid > -1) 
-{
-	result=chown(FileName, uid, -1);
-	if (result==0) return(TRUE);
-}
-return(FALSE);
+    uid=LookupUID(Owner);
+    if (uid > -1)
+    {
+        result=chown(FileName, uid, -1);
+        if (result==0) return(TRUE);
+    }
+    RaiseError(ERRFLAG_ERRNO, "FileChOwner", "failed to change owner to user=%s uid=%d",Owner,uid);
+    return(FALSE);
 }
 
 
 
 int FileChGroup(const char *FileName, const char *Group)
 {
-int gid, result;
+    int gid, result;
 
-gid=LookupGID(Group);
-if (gid > -1) 
-{
-	result=chown(FileName, -1, gid);
-	if (result==0) return(TRUE);
-}
-return(FALSE);
+    gid=LookupGID(Group);
+    if (gid > -1)
+    {
+        result=chown(FileName, -1, gid);
+        if (result==0) return(TRUE);
+    }
+    RaiseError(ERRFLAG_ERRNO, "FileChGroup", "failed to change group to group=%s gid=%d",Group,gid);
+    return(FALSE);
 }
 
 
 int FileCopyWithProgress(const char *SrcPath, const char *DestPath, DATA_PROGRESS_CALLBACK Callback)
 {
-STREAM *Src, *Dest;
+    STREAM *Src;
+    int result;
 
-Src=STREAMOpen(SrcPath,"r");
-if (! Src) return(FALSE);
-if (Callback) STREAMAddProgressCallback(Src,Callback);
-Dest=STREAMOpen(DestPath,"wc");
-if (! Dest)
+    Src=STREAMOpen(SrcPath,"r");
+    if (! Src) return(FALSE);
+    if (Callback) STREAMAddProgressCallback(Src,Callback);
+    result=STREAMCopy(Src, DestPath);
+    STREAMClose(Src);
+    return(result);
+}
+
+
+int FileGetBinaryXAttr(char **RetStr, const char *Path, const char *Name)
 {
-STREAMClose(Src);
-return(FALSE);
+    int len;
+
+#ifdef HAVE_XATTR
+    len=getxattr(Path, Name, NULL, 0);
+    if (len > 0)
+    {
+        *RetStr=SetStrLen(*RetStr,len);
+        getxattr(Path, Name, *RetStr, len);
+    }
+    else *RetStr=CopyStr(*RetStr, "");
+#else
+    RaiseError(0, "FileGetXAttr", "xattr support not compiled in");
+#endif
+
+    return(len);
 }
 
-STREAMSendFile(Src, Dest, 0, SENDFILE_LOOP);
-// | SENDFILE_KERNEL);
-STREAMClose(Dest);
-STREAMClose(Src);
-return(TRUE);
+char *FileGetXAttr(char *RetStr, const char *Path, const char *Name)
+{
+    int len;
+
+    len=FileGetBinaryXAttr(&RetStr, Path, Name);
+    RetStr[len]=0;
+    return(RetStr);
+}
+
+
+int FileSetBinaryXAttr(const char *Path, const char *Name, const char *Value, int Len)
+{
+#ifdef HAVE_XATTR
+    return(setxattr(Path, Name, Value, Len, 0));
+#else
+    RaiseError(0, "FileSetXAttr", "xattr support not compiled in");
+#endif
+
+    return(-1);
+}
+
+
+int FileSetXAttr(const char *Path, const char *Name, const char *Value)
+{
+    return(FileSetBinaryXAttr(Path, Name, Value, StrLen(Value)));
+}
+
+
+int FileSystemMount(const char *Dev, const char *MountPoint, const char *Type, const char *Args)
+{
+    const char *ptr, *p_Type, *p_MountPoint;
+    char *Token=NULL;
+    int Flags=0, result, Perms=700;
+
+    p_Type=Type;
+    if (! StrValid(MountPoint))
+    {
+        p_MountPoint=Dev;
+        if (*p_MountPoint) p_MountPoint++;
+    }
+    else p_MountPoint=MountPoint;
+
+    if (! StrValid(p_MountPoint)) return(FALSE);
+
+    if (strcmp(Type,"bind")==0)
+    {
+#ifdef MS_BIND
+        p_Type="";
+        Flags=MS_BIND;
+#else
+        RaiseError(0, "FileSystemMount", "Bind mounts not supported on this system.");
+        return(FALSE);
+#endif
+    }
+
+
+    ptr=GetToken(Args, " |,", &Token, GETTOKEN_MULTI_SEP);
+    while (ptr)
+    {
+#ifdef MS_RDONLY
+        if (strcmp(Token,"ro")==0) Flags |= MS_RDONLY;
+#endif
+
+#ifdef MS_NOATIME
+        if (strcmp(Token,"noatime")==0) Flags |= MS_NOATIME;
+#endif
+
+#ifdef MS_NOATIME
+        if (strcmp(Token,"nodiratime")==0) Flags |= MS_NODIRATIME;
+#endif
+
+#ifdef MS_NOEXEC
+        if (strcmp(Token,"noexec")==0) Flags |= MS_NOEXEC;
+#endif
+
+#ifdef MS_NOSUID
+        if (strcmp(Token,"nosuid")==0) Flags |= MS_NOSUID;
+#endif
+
+#ifdef MS_NODEV
+        if (strcmp(Token,"nodev")==0) Flags |= MS_NODEV;
+#endif
+
+#ifdef MS_REMOUNT
+        if (strcmp(Token,"remount")==0) Flags |= MS_REMOUNT;
+#endif
+
+
+        if (strncmp(Token,"perms=",6)==0) Perms=strtol(Token+6,NULL,8);
+        ptr=GetToken(ptr, " |,", &Token, GETTOKEN_MULTI_SEP);
+    }
+
+    Token=MCopyStr(Token,p_MountPoint,"/",NULL);
+    MakeDirPath(Token,Perms);
+
+//must do a little dance for readonly bind mounts. We must first mount, then remount readonly
+#ifdef MS_BIND
+    if ((Flags & MS_BIND) && (Flags & MS_RDONLY))
+    {
+        mount(Dev,p_MountPoint,"",MS_BIND,NULL);
+        Flags |= MS_REMOUNT;
+    }
+#endif
+
+#ifdef linux
+    result=mount(Dev,p_MountPoint,p_Type,Flags,NULL);
+#else
+//assume BSD if not linux
+    result=mount(p_Type,p_MountPoint,Flags,Dev);
+#endif
+
+
+    if (result !=0) RaiseError(ERRFLAG_ERRNO, "FileSystemMount", "failed to mount %s:%s on %s", p_Type,Dev,p_MountPoint);
+
+    DestroyString(Token);
+
+    if (result==0) return(TRUE);
+    return(FALSE);
 }
 
 
 
+//if the system doesn't have these flags then define empty values for them
+#ifndef UMOUNT_NOFOLLOW
+#define UMOUNT_NOFOLLOW 0
+#endif
 
-#ifdef HAVE_FANOTIFY
+#ifndef MNT_DETACH
+#define MNT_DETACH 0
+#endif
 
+
+#define UMOUNT_RECURSE 1
+#define UMOUNT_RMDIR   2
+
+int FileSystemUnMount(const char *MountPoint, const char *Args)
+{
+    int Flags=UMOUNT_NOFOLLOW;
+    int ExtraFlags=0;
+    char *Token=NULL;
+    const char *ptr;
+    struct stat FStat;
+    int i, result;
+    glob_t Glob;
+
+    ptr=GetToken(Args, " |,", &Token, GETTOKEN_MULTI_SEP);
+    while (ptr)
+    {
+        if (strcmp(Token,"follow")==0) Flags &= ~UMOUNT_NOFOLLOW;
+        if (strcmp(Token,"lazy")==0) Flags |= MNT_DETACH;
+        if (strcmp(Token,"detach")==0) Flags |= MNT_DETACH;
+        if (strcmp(Token,"recurse")==0) ExtraFlags |= UMOUNT_RECURSE;
+        if (strcmp(Token,"rmdir")==0) ExtraFlags |= UMOUNT_RMDIR;
+
+        ptr=GetToken(ptr, " |,", &Token, GETTOKEN_MULTI_SEP);
+    }
+
+    if (ExtraFlags & UMOUNT_RECURSE)
+    {
+        Token=MCopyStr(Token,MountPoint,"/*",NULL);
+        glob(Token, 0, 0, &Glob);
+        for (i=0; i < Glob.gl_pathc; i++)
+        {
+            stat(Glob.gl_pathv[i],&FStat);
+            if (S_ISDIR(FStat.st_mode))
+            {
+                FileSystemUnMount(Glob.gl_pathv[i], Args);
+            }
+        }
+        globfree(&Glob);
+    }
+
+
+
+#ifdef HAVE_UMOUNT2
+    result=umount2(MountPoint, Flags);
+#elif HAVE_UMOUNT
+    result=umount(MountPoint);
+#elif HAVE_UNMOUNT
+    result=unmount(MountPoint,0);
+#else
+    result=-1
+#endif
+
+    if (ExtraFlags & UMOUNT_RMDIR) rmdir(MountPoint);
+    DestroyString(Token);
+
+    return(result);
+}
+
+
+#ifdef USE_FANOTIFY
 #include <linux/fanotify.h>
 #include <sys/fcntl.h>
 #include <sys/stat.h>
 
 
-/*
-+  fd = fanotify_init (0, 0);
-+  if (fd < 0 && 0)
-+    {
-+      if (errno == ENOSYS)
-+	{
-+	  puts ("SKIP: missing support for fanotify (check CONFIG_FANOTIFY=y)");
-+	  return 0;
-+	}
-+
-+      perror ("fanotify_init (0, 0) failed");
-+      return 1;
-+    }
-+
-+  ret = fanotify_mark (fd, FAN_MARK_ADD | FAN_MARK_MOUNT, FAN_ACCESS
-+		       | FAN_MODIFY | FAN_OPEN | FAN_CLOSE | FAN_ONDIR
-+		       | FAN_EVENT_ON_CHILD, AT_FDCWD, ".");
-+  if (ret)
-+    {
-+      perror ("fanotify_mark (...) failed");
-+      return 1;
-+    }
-+
-+  puts ("All OK");
-+  return 0;
-+}
-*/
+void FileNotifyRecursiveMark(int fd, int mark_flags, int event_flags, const char *Path)
+{
+    char *Tempstr=NULL;
+    struct stat Stat;
+    glob_t Glob;
+    int i;
+
+    Tempstr=MCopyStr(Tempstr, Path, "/*", NULL);
+    glob(Tempstr, 0, 0, &Glob);
+    for (i=0; i < Glob.gl_pathc; i++)
+    {
+        stat(Glob.gl_pathv[i],&Stat);
+        if (S_ISDIR(Stat.st_mode))
+        {
+            fanotify_mark(fd, mark_flags, event_flags, AT_FDCWD, Glob.gl_pathv[i]);
+            FileNotifyRecursiveMark(fd, mark_flags, event_flags, Glob.gl_pathv[i]);
+        }
+    }
+
+    globfree(&Glob);
+    DestroyString(Tempstr);
+}
+#endif
 
 
 int FileNotifyInit(const char *Path, int Flags)
 {
-char *Token=NULL, *ptr;
-int fd;
+    int fd=-1;
 
-fd=fanotify_init(Flags, O_RDWR);
-if (fd==-1) return(fd);
+#ifdef USE_FANOTIFY
+    int  fa_flags=0, mark_flags=FAN_MARK_ADD, event_flags=0;
+    char *Token=NULL;
+    const char *ptr;
 
-ptr=GetToken(Path,":",&Token,0);
-while (ptr)
+    if (Flags & FNOTIFY_BEFORE) fa_flags |= FAN_CLASS_PRE_CONTENT;
+    else if (Flags & FNOTIFY_PERMIT) fa_flags |= FAN_CLASS_CONTENT;
+
+    if (Flags & FNOTIFY_FILESYSTEM) mark_flags |= FAN_MARK_MOUNT;
+    if (Flags & (FNOTIFY_DIR | FNOTIFY_RECURSE)) event_flags |= FAN_EVENT_ON_CHILD | FAN_ONDIR;
+
+    if (Flags & FNOTIFY_OPEN) event_flags |= FAN_OPEN;
+    if (Flags & FNOTIFY_CLOSE) event_flags |= FAN_CLOSE;
+    if (Flags & FNOTIFY_READ) event_flags |= FAN_ACCESS;
+    if (Flags & FNOTIFY_WRITE) event_flags |= FAN_MODIFY;
+    if (Flags & FNOTIFY_PERMIT) event_flags |= FAN_OPEN_PERM;
+
+    fd=fanotify_init(fa_flags, O_RDWR | O_LARGEFILE);
+    if (fd==-1)
+    {
+        RaiseError(ERRFLAG_ERRNO, "FileNotify", "fanotify_init failed");
+        return(fd);
+    }
+
+    ptr=GetToken(Path,":|,",&Token,GETTOKEN_MULTI_SEP);
+    while (ptr)
+    {
+        fanotify_mark(fd, mark_flags, event_flags, AT_FDCWD, Token);
+        if (Flags & FNOTIFY_RECURSE) FileNotifyRecursiveMark(fd, mark_flags, event_flags, Token);
+
+        ptr=GetToken(ptr,":|,",&Token,GETTOKEN_MULTI_SEP);
+    }
+
+    DestroyString(Token);
+#else
+    RaiseError(ERRFLAG_ERRNO, "FileNotify", "libUseful was compiled without fanotify support");
+#endif
+
+    return(fd);
+}
+
+
+int FileNotifyNext(int NotifyFD, char **Path, pid_t *Pid, int *fd)
 {
-	fanotify_mark(fd, FAN_MARK_ADD, FAN_CLOSE_WRITE, -1, NULL);
+    int result=0;
 
-	ptr=GetToken(ptr,":",&Token,0);
+#ifdef USE_FANOTIFY
+    struct fanotify_event_metadata metadata;
+    char *Tempstr=NULL, len;
+
+    len=read(NotifyFD, &metadata, sizeof(struct fanotify_event_metadata));
+    if (len < sizeof(struct fanotify_event_metadata)) return(0);
+
+    if (Path)
+    {
+        Tempstr=FormatStr(Tempstr, "/proc/self/fd/%d", metadata.fd);
+        *Path=SetStrLen(*Path,PATH_MAX +1);
+        len=readlink(Tempstr,*Path,PATH_MAX +1);
+        (*Path)[len]='\0';
+    }
+    if (Pid) *Pid=metadata.pid;
+    if (fd) *fd=metadata.fd;
+    else close(metadata.fd);
+
+    DestroyString(Tempstr);
+
+    if (metadata.mask & FAN_OPEN) result |= FNOTIFY_OPEN;
+    if (metadata.mask & FAN_ACCESS) result |= FNOTIFY_READ;
+    if (metadata.mask & FAN_MODIFY) result |= FNOTIFY_WRITE;
+    if (metadata.mask & FAN_CLOSE) result |= FNOTIFY_CLOSE;
+    if (metadata.mask & FAN_ACCESS_PERM) result |= FNOTIFY_PERMIT;
+    if (metadata.mask & FAN_OPEN_PERM) result |= FNOTIFY_PERMIT;
+
+#else
+    RaiseError(ERRFLAG_ERRNO, "FileNotify", "libUseful was compiled without fanotify support");
+#endif
+
+    return(result);
 }
 
-DestroyString(Token);
 
-return(fd);
-}
-
-
-int FileNotifyGetNext(int fd, char **Path)
+void FileNotifyPermit(int NotifyFD, int file_fd, int Permit)
 {
-struct fanotify_event_metadata metadata;
-char *Tempstr=NULL;
-int result;
+#ifdef USE_FANOTIFY
+    struct fanotify_response Response;
 
-result=read(fd, &metadata, sizeof(struct fanotify_event_metadata));
-if (result < sizeof(struct fanotify_event_metadata)) return(-1);
+    Response.fd=file_fd;
+    if (Permit) Response.response=FAN_ALLOW;
+    else Response.response=FAN_DENY;
 
-if (Path)
-{
-	Tempstr=FormatStr(Tempstr, "/proc/self/fd/%d", metadata.fd);
-	*Path=SetStrLen(*Path,PATH_MAX +1);
-	readlink(Tempstr,*Path,PATH_MAX +1);
-}
-
-DestroyString(Tempstr);
-return(metadata.fd);
-}
-
-
+    write(NotifyFD, &Response, sizeof(Response));
 
 #endif
+}

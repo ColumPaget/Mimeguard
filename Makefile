@@ -1,10 +1,10 @@
 FLAGS=
 LIBS=-lm -lz 
-prefix=/usr
+prefix=/usr/local
 sysconfdir=/etc
 bindir=${exec_prefix}/bin
 
-OBJ=common.o DocumentTypes.o Mime.o Magic.o FileExtensions.o FileTypeRules.o Export.o DocumentStrings.o ConfigFile.o Output.o Zip.o PDF.o RTF.o OLE.o libUseful-2.8/libUseful-2.8.a
+OBJ=common.o DocumentTypes.o Mime.o FileMagics.o FileExtensions.o FileTypeRules.o Export.o DocumentStrings.o ConfigFile.o Output.o Zip.o PDF.o RTF.o OLE.o HTML.o URL.o IPRegion.o libUseful-2.8/libUseful-2.8.a
 
 
 mimeguard: $(OBJ) main.c
@@ -13,8 +13,8 @@ mimeguard: $(OBJ) main.c
 Mime.o: Mime.h Mime.c
 	gcc $(FLAGS) -c Mime.c
 
-Magic.o: Magic.h Magic.c
-	gcc $(FLAGS) -c Magic.c
+FileMagics.o: FileMagics.h FileMagics.c
+	gcc $(FLAGS) -c FileMagics.c
 
 FileExtensions.o: FileExtensions.h FileExtensions.c
 	gcc $(FLAGS) -c FileExtensions.c
@@ -39,6 +39,15 @@ RTF.o: RTF.h RTF.c
 
 OLE.o: OLE.h OLE.c
 	gcc $(FLAGS) -c OLE.c
+
+HTML.o: HTML.h HTML.c
+	gcc $(FLAGS) -c HTML.c
+
+URL.o: URL.h URL.c
+	gcc $(FLAGS) -c URL.c
+
+IPRegion.o: IPRegion.h IPRegion.c
+	gcc $(FLAGS) -c IPRegion.c
 
 Export.o: Export.h Export.c
 	gcc $(FLAGS) -c Export.c

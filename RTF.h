@@ -1,5 +1,5 @@
-#ifndef FILEFILTER_RTF_H
-#define FILEFILTER_RTF_H
+#ifndef MIMEGUARD_RTF_H
+#define MIMEGUARD_RTF_H
 
 #include "common.h"
 #include "Mime.h"

@@ -3,7 +3,7 @@
 
 #include "includes.h"
 #include "defines.h"
-#include "file.h"
+#include "Stream.h"
 
 #define LOGFILE_DEFAULTS 0
 #define LOGFILE_FLUSH 1

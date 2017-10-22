@@ -1,5 +1,5 @@
-#ifndef FILEFILTER_DS_H
-#define FILEFILTER_DS_H
+#ifndef MIMEGUARD_DS_H
+#define MIMEGUARD_DS_H
 
 #include "common.h"
 #include "Mime.h"

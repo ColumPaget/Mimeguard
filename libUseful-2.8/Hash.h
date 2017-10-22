@@ -1,9 +1,12 @@
 #ifndef LIBUSEFUL_HASH_H
 #define LIBUSEFUL_HASH_H
 
-#include "file.h"
+//if you load Hash.h you'll want Encodings.h too
+#include "Encodings.h"
+#include "Stream.h"
 #include "includes.h"
 
+#define HashUpdate(Hash, text, len) (Hash->Update(Hash, text, len))
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,7 +37,7 @@ int HashEncodingFromStr(const char *Str);
 char *HashAvailableTypes(char *RetStr);
 HASH *HashInit(const char *Type);
 int HashFinish(HASH *Hash, int Encoding, char **Return);
-void HMACSetKey(HASH *HMAC, char *Key, int Len);
+void HMACSetKey(HASH *HMAC, const char *Key, int Len);
 void HashDestroy(HASH *Hash);
 int HashBytes(char **Return, const char *Type, const char *text, int len, int Encoding);
 int HashBytes2(const char *Type, int Encoding, const char *text, int len, char **RetStr);

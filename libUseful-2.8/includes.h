@@ -1,6 +1,8 @@
 #ifndef LIBUSEFUL_INCLUDES_H
 #define LIBUSEFUL_INCLUDES_H
 
+#define _GNU_SOURCE
+
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
@@ -19,15 +21,17 @@
 #include <ctype.h>
 
 #include "defines.h"
-#include "string.h"
-#include "list.h"
-#include "file.h"
-#include "socket.h"
-#include "openssl.h"
+#include "String.h"
+#include "List.h"
+#include "Time.h"
+#include "Stream.h"
+#include "Socket.h"
+#include "OpenSSL.h"
 #include "Vars.h"
-#include "libsettings.h"
+#include "Errors.h"
+#include "LibSettings.h"
 #include "GeneralFunctions.h"
 #include "Tokenizer.h"
-#include "process.h"
+#include "Process.h"
 
 #endif

@@ -23,44 +23,49 @@ void F8(hashState *state);                    /* The compression function F8 */
 /*the round function of E8 */
 void R8(hashState *state)
 {
-      unsigned int i;
-      unsigned char tem[256],t;
-      unsigned char roundconstant_expanded[256];  /*the round constant expanded into 256 1-bit element;*/
+    unsigned int i;
+    unsigned char tem[256],t;
+    unsigned char roundconstant_expanded[256];  /*the round constant expanded into 256 1-bit element;*/
 
-      /*expand the round constant into 256 one-bit element*/
-      for (i = 0; i < 256; i++)  {
-            roundconstant_expanded[i] = (state->roundconstant[i >> 2] >> (3 - (i & 3)) ) & 1;
-      }
+    /*expand the round constant into 256 one-bit element*/
+    for (i = 0; i < 256; i++)
+    {
+        roundconstant_expanded[i] = (state->roundconstant[i >> 2] >> (3 - (i & 3)) ) & 1;
+    }
 
-      /*S box layer, each constant bit selects one Sbox from S0 and S1*/
-      for (i = 0; i < 256; i++) {
-            tem[i] = S[roundconstant_expanded[i]][state->A[i]]; /*constant bits are used to determine which Sbox to use*/
-      }
+    /*S box layer, each constant bit selects one Sbox from S0 and S1*/
+    for (i = 0; i < 256; i++)
+    {
+        tem[i] = S[roundconstant_expanded[i]][state->A[i]]; /*constant bits are used to determine which Sbox to use*/
+    }
 
-      /*MDS Layer*/
-      for (i = 0; i < 256; i=i+2) L(tem[i], tem[i+1]);
+    /*MDS Layer*/
+    for (i = 0; i < 256; i=i+2) L(tem[i], tem[i+1]);
 
-      /*The following is the permuation layer P_8*/
+    /*The following is the permuation layer P_8*/
 
-      /*initial swap Pi_8*/
-      for ( i = 0; i < 256; i=i+4) {
-            t = tem[i+2];
-            tem[i+2] = tem[i+3];
-            tem[i+3] = t;
-      }
+    /*initial swap Pi_8*/
+    for ( i = 0; i < 256; i=i+4)
+    {
+        t = tem[i+2];
+        tem[i+2] = tem[i+3];
+        tem[i+3] = t;
+    }
 
-      /*permutation P'_8*/
-      for (i = 0; i < 128; i=i+1) {
-            state->A[i] = tem[i<<1];
-            state->A[i+128] = tem[(i<<1)+1];
-      }
+    /*permutation P'_8*/
+    for (i = 0; i < 128; i=i+1)
+    {
+        state->A[i] = tem[i<<1];
+        state->A[i+128] = tem[(i<<1)+1];
+    }
 
-      /*final swap Phi_8*/
-      for ( i = 128; i < 256; i=i+2) {
-            t = state->A[i];
-            state->A[i] = state->A[i+1];
-            state->A[i+1] = t;
-      }
+    /*final swap Phi_8*/
+    for ( i = 128; i < 256; i=i+2)
+    {
+        t = state->A[i];
+        state->A[i] = state->A[i+1];
+        state->A[i+1] = t;
+    }
 }
 
 
@@ -68,254 +73,285 @@ void R8(hashState *state)
   round constant;  R6 is used for generating round constants for E8, with
   the round constants of R6 being set as 0;
 */
-void update_roundconstant(hashState *state) {
-      int i;
-      unsigned char tem[64],t;
+void update_roundconstant(hashState *state)
+{
+    int i;
+    unsigned char tem[64],t;
 
-      /*Sbox layer*/
-      for (i = 0; i < 64; i++)   tem[i] = S[0][state->roundconstant[i]];
+    /*Sbox layer*/
+    for (i = 0; i < 64; i++)   tem[i] = S[0][state->roundconstant[i]];
 
-      /*MDS layer*/
-      for (i = 0; i < 64; i=i+2) L(tem[i], tem[i+1]);
+    /*MDS layer*/
+    for (i = 0; i < 64; i=i+2) L(tem[i], tem[i+1]);
 
-      /*The following is the permutation layer P_6 */
+    /*The following is the permutation layer P_6 */
 
-      /*initial swap Pi_6*/
-      for ( i = 0; i < 64; i=i+4) {
-            t = tem[i+2];
-            tem[i+2] = tem[i+3];
-            tem[i+3] = t;
-      }
+    /*initial swap Pi_6*/
+    for ( i = 0; i < 64; i=i+4)
+    {
+        t = tem[i+2];
+        tem[i+2] = tem[i+3];
+        tem[i+3] = t;
+    }
 
-      /*permutation P'_6*/
-      for ( i = 0; i < 32; i=i+1) {
-            state->roundconstant[i]    = tem[i<<1];
-            state->roundconstant[i+32] = tem[(i<<1)+1];
-      }
+    /*permutation P'_6*/
+    for ( i = 0; i < 32; i=i+1)
+    {
+        state->roundconstant[i]    = tem[i<<1];
+        state->roundconstant[i+32] = tem[(i<<1)+1];
+    }
 
-      /*final swap Phi_6*/
-      for ( i = 32; i < 64; i=i+2 ) {
-            t = state->roundconstant[i];
-            state->roundconstant[i] = state->roundconstant[i+1];
-            state->roundconstant[i+1] = t;
-      }
+    /*final swap Phi_6*/
+    for ( i = 32; i < 64; i=i+2 )
+    {
+        t = state->roundconstant[i];
+        state->roundconstant[i] = state->roundconstant[i+1];
+        state->roundconstant[i+1] = t;
+    }
 }
 
 /*initial group at the begining of E_8: group the bits of H into 4-bit elements of A.
   After the grouping, the i-th, (i+256)-th, (i+512)-th, (i+768)-th bits of state->H
   become the i-th 4-bit element of state->A
 */
-void E8_initialgroup(hashState *state) {
-      unsigned int i;
-      unsigned char t0,t1,t2,t3;
-      unsigned char tem[256];
+void E8_initialgroup(hashState *state)
+{
+    unsigned int i;
+    unsigned char t0,t1,t2,t3;
+    unsigned char tem[256];
 
-      /*t0 is the i-th bit of H, i = 0, 1, 2, 3, ... , 127*/
-      /*t1 is the (i+256)-th bit of H*/
-      /*t2 is the (i+512)-th bit of H*/
-      /*t3 is the (i+768)-th bit of H*/
-      for (i = 0; i < 256; i++) {
-            t0 = (state->H[i>>3] >> (7 - (i & 7)) ) & 1;
-            t1 = (state->H[(i+256)>>3] >> (7 - (i & 7)) ) & 1;
-            t2 = (state->H[(i+ 512 )>>3] >> (7 - (i & 7)) ) & 1;
-            t3 = (state->H[(i+ 768 )>>3] >> (7 - (i & 7)) ) & 1;
-            tem[i] = (t0 << 3) | (t1 << 2) | (t2 << 1) | (t3 << 0);
-      }
-      /*padding the odd-th elements and even-th elements separately*/
-      for (i = 0; i < 128; i++) {
-            state->A[i << 1] = tem[i];
-            state->A[(i << 1)+1] = tem[i+128];
-      }
+    /*t0 is the i-th bit of H, i = 0, 1, 2, 3, ... , 127*/
+    /*t1 is the (i+256)-th bit of H*/
+    /*t2 is the (i+512)-th bit of H*/
+    /*t3 is the (i+768)-th bit of H*/
+    for (i = 0; i < 256; i++)
+    {
+        t0 = (state->H[i>>3] >> (7 - (i & 7)) ) & 1;
+        t1 = (state->H[(i+256)>>3] >> (7 - (i & 7)) ) & 1;
+        t2 = (state->H[(i+ 512 )>>3] >> (7 - (i & 7)) ) & 1;
+        t3 = (state->H[(i+ 768 )>>3] >> (7 - (i & 7)) ) & 1;
+        tem[i] = (t0 << 3) | (t1 << 2) | (t2 << 1) | (t3 << 0);
+    }
+    /*padding the odd-th elements and even-th elements separately*/
+    for (i = 0; i < 128; i++)
+    {
+        state->A[i << 1] = tem[i];
+        state->A[(i << 1)+1] = tem[i+128];
+    }
 }
 
 /*de-group at the end of E_8:  it is the inverse of E8_initialgroup
   The 256 4-bit elements in state->A are degouped into the 1024-bit state->H
 */
-void E8_finaldegroup(hashState *state) {
-      unsigned int i;
-      unsigned char t0,t1,t2,t3;
-      unsigned char tem[256];
+void E8_finaldegroup(hashState *state)
+{
+    unsigned int i;
+    unsigned char t0,t1,t2,t3;
+    unsigned char tem[256];
 
-      for (i = 0; i < 128; i++) {
-            tem[i] = state->A[i << 1];
-            tem[i+128] = state->A[(i << 1)+1];
-      }
+    for (i = 0; i < 128; i++)
+    {
+        tem[i] = state->A[i << 1];
+        tem[i+128] = state->A[(i << 1)+1];
+    }
 
-      for (i = 0; i < 128; i++) state->H[i] = 0;
+    for (i = 0; i < 128; i++) state->H[i] = 0;
 
-      for (i = 0; i < 256; i++) {
-            t0 = (tem[i] >> 3) & 1;
-            t1 = (tem[i] >> 2) & 1;
-            t2 = (tem[i] >> 1) & 1;
-            t3 = (tem[i] >> 0) & 1;
+    for (i = 0; i < 256; i++)
+    {
+        t0 = (tem[i] >> 3) & 1;
+        t1 = (tem[i] >> 2) & 1;
+        t2 = (tem[i] >> 1) & 1;
+        t3 = (tem[i] >> 0) & 1;
 
-            state->H[i>>3] |= t0 << (7 - (i & 7));
-            state->H[(i + 256)>>3] |= t1 << (7 - (i & 7));
-            state->H[(i + 512)>>3] |= t2 << (7 - (i & 7));
-            state->H[(i + 768)>>3] |= t3 << (7 - (i & 7));
-      }
+        state->H[i>>3] |= t0 << (7 - (i & 7));
+        state->H[(i + 256)>>3] |= t1 << (7 - (i & 7));
+        state->H[(i + 512)>>3] |= t2 << (7 - (i & 7));
+        state->H[(i + 768)>>3] |= t3 << (7 - (i & 7));
+    }
 }
 
 /*bijective function E8 */
 void E8(hashState *state)
 {
-      unsigned int i;
-      //unsigned char t0,t1,t2,t3;
-      //unsigned char tem[256];
+    unsigned int i;
+    //unsigned char t0,t1,t2,t3;
+    //unsigned char tem[256];
 
-      /*initialize the round constant*/
-      for (i = 0; i < 64; i++) state->roundconstant[i] = roundconstant_zero[i];
+    /*initialize the round constant*/
+    for (i = 0; i < 64; i++) state->roundconstant[i] = roundconstant_zero[i];
 
-      /*initial group at the begining of E_8: group the H value into 4-bit elements and store them in A */
-      E8_initialgroup(state);
+    /*initial group at the begining of E_8: group the H value into 4-bit elements and store them in A */
+    E8_initialgroup(state);
 
-      /* 42 rounds */
-      for (i = 0; i < 42; i++) {
-            R8(state);
-            update_roundconstant(state);
-      }
+    /* 42 rounds */
+    for (i = 0; i < 42; i++)
+    {
+        R8(state);
+        update_roundconstant(state);
+    }
 
-      /*de-group at the end of E_8:  decompose the 4-bit elements of A into the 1024-bit H*/
-      E8_finaldegroup(state);
+    /*de-group at the end of E_8:  decompose the 4-bit elements of A into the 1024-bit H*/
+    E8_finaldegroup(state);
 }
 
 /* compression function F8 */
 void F8(hashState *state)
 {
-      unsigned int i;
+    unsigned int i;
 
-      /*xor the message with the first half of H*/
-      for (i = 0; i < 64; i++) state->H[i] ^= state->buffer[i];
+    /*xor the message with the first half of H*/
+    for (i = 0; i < 64; i++) state->H[i] ^= state->buffer[i];
 
-      /* Bijective function E8 */
-      E8(state);
+    /* Bijective function E8 */
+    E8(state);
 
-      /* xor the message with the last half of H */
-      for (i = 0; i < 64; i++) state->H[i+64] ^= state->buffer[i];
+    /* xor the message with the last half of H */
+    for (i = 0; i < 64; i++) state->H[i+64] ^= state->buffer[i];
 }
 
 /*before hashing a message, initialize the hash state as H0 */
 HashReturn JHInit(hashState *state, int hashbitlen)
 {
-      unsigned int i;
+    unsigned int i;
 
-      state->databitlen = 0;
-	  state->datasize_in_buffer = 0;
+    state->databitlen = 0;
+    state->datasize_in_buffer = 0;
 
-      state->hashbitlen = hashbitlen;
+    state->hashbitlen = hashbitlen;
 
-      for (i = 0; i < 64; i++) state->buffer[i] = 0;
-      for (i = 0; i < 128; i++) state->H[i] = 0;
+    for (i = 0; i < 64; i++) state->buffer[i] = 0;
+    for (i = 0; i < 128; i++) state->H[i] = 0;
 
-      /*initialize the initial hash value of JH*/
-      /*step 1: set H(-1) to the message digest size*/
-      state->H[1] = hashbitlen & 0xff;
-      state->H[0] = (hashbitlen >> 8) & 0xff;
-	  /*step 2: compute H0 from H(-1) with message M(0) being set as 0*/
-      F8(state);
+    /*initialize the initial hash value of JH*/
+    /*step 1: set H(-1) to the message digest size*/
+    state->H[1] = hashbitlen & 0xff;
+    state->H[0] = (hashbitlen >> 8) & 0xff;
+    /*step 2: compute H0 from H(-1) with message M(0) being set as 0*/
+    F8(state);
 
-      return(SUCCESS);
+    return(SUCCESS);
 }
 
 /*hash each 512-bit message block, except the last partial block*/
 HashReturn JHUpdate(hashState *state, const unsigned char *data, DataLength databitlen)
 {
-      DataLength index; /*the starting address of the data to be compressed*/
+    DataLength index; /*the starting address of the data to be compressed*/
 
-      state->databitlen += databitlen;
-      index = 0;
+    state->databitlen += databitlen;
+    index = 0;
 
-      /*if there is remaining data in the buffer, fill it to a full message block first*/
-      /*we assume that the size of the data in the buffer is the multiple of 8 bits if it is not at the end of a message*/
+    /*if there is remaining data in the buffer, fill it to a full message block first*/
+    /*we assume that the size of the data in the buffer is the multiple of 8 bits if it is not at the end of a message*/
 
-      /*There is data in the buffer, but the incoming data is insufficient for a full block*/
-      if ( (state->datasize_in_buffer > 0 ) && (( state->datasize_in_buffer + databitlen) < 512)  ) {
-            if ( (databitlen & 7) == 0 ) {
-                 memcpy(state->buffer + (state->datasize_in_buffer >> 3), data, 64-(state->datasize_in_buffer >> 3)) ;
-		    }
-            else memcpy(state->buffer + (state->datasize_in_buffer >> 3), data, 64-(state->datasize_in_buffer >> 3)+1) ;
-            state->datasize_in_buffer += databitlen;
-            databitlen = 0;
-      }
+    /*There is data in the buffer, but the incoming data is insufficient for a full block*/
+    if ( (state->datasize_in_buffer > 0 ) && (( state->datasize_in_buffer + databitlen) < 512)  )
+    {
+        if ( (databitlen & 7) == 0 )
+        {
+            memcpy(state->buffer + (state->datasize_in_buffer >> 3), data, 64-(state->datasize_in_buffer >> 3)) ;
+        }
+        else memcpy(state->buffer + (state->datasize_in_buffer >> 3), data, 64-(state->datasize_in_buffer >> 3)+1) ;
+        state->datasize_in_buffer += databitlen;
+        databitlen = 0;
+    }
 
-      /*There is data in the buffer, and the incoming data is sufficient for a full block*/
-      if ( (state->datasize_in_buffer > 0 ) && (( state->datasize_in_buffer + databitlen) >= 512)  ) {
-	        memcpy( state->buffer + (state->datasize_in_buffer >> 3), data, 64-(state->datasize_in_buffer >> 3) ) ;
-	        index = 64-(state->datasize_in_buffer >> 3);
-	        databitlen = databitlen - (512 - state->datasize_in_buffer);
-	        F8(state);
-	        state->datasize_in_buffer = 0;
-      }
+    /*There is data in the buffer, and the incoming data is sufficient for a full block*/
+    if ( (state->datasize_in_buffer > 0 ) && (( state->datasize_in_buffer + databitlen) >= 512)  )
+    {
+        memcpy( state->buffer + (state->datasize_in_buffer >> 3), data, 64-(state->datasize_in_buffer >> 3) ) ;
+        index = 64-(state->datasize_in_buffer >> 3);
+        databitlen = databitlen - (512 - state->datasize_in_buffer);
+        F8(state);
+        state->datasize_in_buffer = 0;
+    }
 
-      /*hash the remaining full message blocks*/
-      for ( ; databitlen >= 512; index = index+64, databitlen = databitlen - 512) {
-            memcpy(state->buffer, data+index, 64);
-            F8(state);
-      }
+    /*hash the remaining full message blocks*/
+    for ( ; databitlen >= 512; index = index+64, databitlen = databitlen - 512)
+    {
+        memcpy(state->buffer, data+index, 64);
+        F8(state);
+    }
 
-      /*store the partial block into buffer, assume that -- if part of the last byte is not part of the message, then that part consists of 0 bits*/
-      if ( databitlen > 0) {
-            if ((databitlen & 7) == 0)
-                  memcpy(state->buffer, data+index, (databitlen & 0x1ff) >> 3);
-            else
-                  memcpy(state->buffer, data+index, ((databitlen & 0x1ff) >> 3)+1);
-            state->datasize_in_buffer = databitlen;
-      }
+    /*store the partial block into buffer, assume that -- if part of the last byte is not part of the message, then that part consists of 0 bits*/
+    if ( databitlen > 0)
+    {
+        if ((databitlen & 7) == 0)
+            memcpy(state->buffer, data+index, (databitlen & 0x1ff) >> 3);
+        else
+            memcpy(state->buffer, data+index, ((databitlen & 0x1ff) >> 3)+1);
+        state->datasize_in_buffer = databitlen;
+    }
 
-      return(SUCCESS);
+    return(SUCCESS);
 }
 
 
 /*padding the message, truncate the hash value H and obtain the message digest*/
 unsigned int JHFinal(hashState *state, unsigned char *hashval)
 {
-      unsigned int i, len=0;
+    unsigned int i, len=0;
 
-      if ( (state->databitlen & 0x1ff) == 0) {
-            /*pad the message when databitlen is multiple of 512 bits, then process the padded block*/
-            for (i = 0; i < 64; i++) state->buffer[i] = 0;
-            state->buffer[0] = 0x80;
-            state->buffer[63] = state->databitlen & 0xff;
-            state->buffer[62] = (state->databitlen >> 8) & 0xff;
-            state->buffer[61] = (state->databitlen >> 16) & 0xff;
-            state->buffer[60] = (state->databitlen >> 24) & 0xff;
-            state->buffer[59] = (state->databitlen >> 32) & 0xff;
-            state->buffer[58] = (state->databitlen >> 40) & 0xff;
-            state->buffer[57] = (state->databitlen >> 48) & 0xff;
-            state->buffer[56] = (state->databitlen >> 56) & 0xff;
-            F8(state);
-      }
-      else {
-            /*set the rest of the bytes in the buffer to 0*/
-            if ( (state->datasize_in_buffer & 7) == 0)
-                   for (i = (state->databitlen & 0x1ff) >> 3; i < 64; i++)  state->buffer[i] = 0;
-            else
-                   for (i = ((state->databitlen & 0x1ff) >> 3)+1; i < 64; i++)  state->buffer[i] = 0;
+    if ( (state->databitlen & 0x1ff) == 0)
+    {
+        /*pad the message when databitlen is multiple of 512 bits, then process the padded block*/
+        for (i = 0; i < 64; i++) state->buffer[i] = 0;
+        state->buffer[0] = 0x80;
+        state->buffer[63] = state->databitlen & 0xff;
+        state->buffer[62] = (state->databitlen >> 8) & 0xff;
+        state->buffer[61] = (state->databitlen >> 16) & 0xff;
+        state->buffer[60] = (state->databitlen >> 24) & 0xff;
+        state->buffer[59] = (state->databitlen >> 32) & 0xff;
+        state->buffer[58] = (state->databitlen >> 40) & 0xff;
+        state->buffer[57] = (state->databitlen >> 48) & 0xff;
+        state->buffer[56] = (state->databitlen >> 56) & 0xff;
+        F8(state);
+    }
+    else
+    {
+        /*set the rest of the bytes in the buffer to 0*/
+        if ( (state->datasize_in_buffer & 7) == 0)
+            for (i = (state->databitlen & 0x1ff) >> 3; i < 64; i++)  state->buffer[i] = 0;
+        else
+            for (i = ((state->databitlen & 0x1ff) >> 3)+1; i < 64; i++)  state->buffer[i] = 0;
 
-            /*pad and process the partial block when databitlen is not multiple of 512 bits, then hash the padded blocks*/
-            state->buffer[((state->databitlen & 0x1ff) >> 3)] |= 1 << (7- (state->databitlen & 7));
-            F8(state);
-            for (i = 0; i < 64; i++) state->buffer[i] = 0;
-            state->buffer[63] = state->databitlen & 0xff;
-            state->buffer[62] = (state->databitlen >> 8) & 0xff;
-            state->buffer[61] = (state->databitlen >> 16) & 0xff;
-            state->buffer[60] = (state->databitlen >> 24) & 0xff;
-            state->buffer[59] = (state->databitlen >> 32) & 0xff;
-            state->buffer[58] = (state->databitlen >> 40) & 0xff;
-            state->buffer[57] = (state->databitlen >> 48) & 0xff;
-            state->buffer[56] = (state->databitlen >> 56) & 0xff;
-            F8(state);
-      }
+        /*pad and process the partial block when databitlen is not multiple of 512 bits, then hash the padded blocks*/
+        state->buffer[((state->databitlen & 0x1ff) >> 3)] |= 1 << (7- (state->databitlen & 7));
+        F8(state);
+        for (i = 0; i < 64; i++) state->buffer[i] = 0;
+        state->buffer[63] = state->databitlen & 0xff;
+        state->buffer[62] = (state->databitlen >> 8) & 0xff;
+        state->buffer[61] = (state->databitlen >> 16) & 0xff;
+        state->buffer[60] = (state->databitlen >> 24) & 0xff;
+        state->buffer[59] = (state->databitlen >> 32) & 0xff;
+        state->buffer[58] = (state->databitlen >> 40) & 0xff;
+        state->buffer[57] = (state->databitlen >> 48) & 0xff;
+        state->buffer[56] = (state->databitlen >> 56) & 0xff;
+        F8(state);
+    }
 
-      /*truncating the final hash value to generate the message digest*/
-      switch (state->hashbitlen) {
-            case 224: len=28;  memcpy(hashval,state->H+100,len);  break;
-            case 256: len=32; memcpy(hashval,state->H+96, len);  break;
-            case 384: len=48; memcpy(hashval,state->H+80, len);  break;
-            case 512: len=64;  memcpy(hashval,state->H+64, len);  break;
-      }
+    /*truncating the final hash value to generate the message digest*/
+    switch (state->hashbitlen)
+    {
+    case 224:
+        len=28;
+        memcpy(hashval,state->H+100,len);
+        break;
+    case 256:
+        len=32;
+        memcpy(hashval,state->H+96, len);
+        break;
+    case 384:
+        len=48;
+        memcpy(hashval,state->H+80, len);
+        break;
+    case 512:
+        len=64;
+        memcpy(hashval,state->H+64, len);
+        break;
+    }
 
-      return(len);
+    return(len);
 }
 
 

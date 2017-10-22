@@ -7,7 +7,7 @@
 #define RULE_NONE 0
 #define RULE_SAFE 1
 #define RULE_EVIL 2
-#define RULE_CONTAINER 4
+#define RULE_STRIP 4
 #define RULE_MISMATCH  8
 #define RULE_BLANK_CONTYPE 16
 #define RULE_BLANK_MAGIC 32
@@ -23,16 +23,17 @@
 #define RULE_ENCRYPTED 32768
 #define RULE_ALLOW_ENCRYPTED 65536
 #define RULE_ALLOW_MACROS 131072
+#define RULE_CONTAINER 262144
 
 #define RULE_MASK (RULE_SAFE|RULE_EVIL|RULE_MISMATCH)
 
 void FileRulesAdd(const char *Type, int Flags, const char *Contains, const char *Equivalent);
 void FileTypeRuleParse(const char *Data, int Flags);
 void FileExtnRuleParse(const char *Data);
-void FileRulesConsider(TMimeItem *Item);
+int FileRulesConsider(TMimeItem *Item);
 void FileRulesLoadPostProcess();
 void HeaderRulesConsider(TMimeItem *Item, const char *Header, const char *Value);
-char *TranslateMimeTypeEquivalent(const char *MimeType);
+const char *TranslateMimeTypeEquivalent(const char *MimeType);
 
 int IsItSafe(TMimeItem *Item);
 

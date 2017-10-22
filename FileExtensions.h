@@ -6,6 +6,6 @@
 void FileExtensionsAdd(const char *Extn, const char *MimeType);
 void FileExtensionsLoad(const char *Path);
 void FileExtensionsLoadDefaults();
-char *FileExtensionLookup(const char *Extn);
+const char *FileExtensionLookup(const char *Extn);
 
 #endif

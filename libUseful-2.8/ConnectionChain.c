@@ -1,70 +1,95 @@
 #include "ConnectionChain.h"
-#include "ParseURL.h"
+#include "URL.h"
 #include "SpawnPrograms.h"
-#include "expect.h"
-#include "file.h"
+#include "Expect.h"
+#include "SecureMem.h"
+#include "Errors.h"
+#include "Stream.h"
+#include "Ssh.h"
 
-const char *HopTypes[]={"none","direct","httptunnel","ssh","sshtunnel","socks4","socks5","shell","telnet",NULL};
+const char *HopTypes[]= {"none","tcp","https","ssh","sshtunnel","socks4","socks5","shell","telnet",NULL};
 typedef enum {CONNECT_HOP_NONE, CONNECT_HOP_TCP, CONNECT_HOP_HTTPTUNNEL, CONNECT_HOP_SSH, CONNECT_HOP_SSHTUNNEL, CONNECT_HOP_SOCKS4, CONNECT_HOP_SOCKS5, CONNECT_HOP_SHELL_CMD, CONNECT_HOP_TELNET} THopTypes;
 
 char *GlobalConnectionChain=NULL;
 
 int SetGlobalConnectionChain(const char *Chain)
 {
-char *Token=NULL, *Type=NULL, *ptr;
-int result=TRUE;
+    char *Token=NULL, *Type=NULL;
+    const char *ptr;
+    int result=TRUE, count=0;
 
-ptr=GetToken(Chain, ",", &Token, 0);
-while (ptr)
-{
-	GetToken(Token,":",&Type,0);
-	if (MatchTokenFromList(Type, HopTypes, 0)==-1) result=FALSE;
-	ptr=GetToken(ptr, ",", &Token, 0);
+    ptr=GetToken(Chain, ",", &Token, 0);
+    while (ptr)
+    {
+        GetToken(Token,":",&Type,0);
+        if (MatchTokenFromList(Type, HopTypes, 0)==-1) result=FALSE;
+        count++;
+        ptr=GetToken(ptr, ",", &Token, 0);
+    }
+
+    GlobalConnectionChain=CopyStr(GlobalConnectionChain, Chain);
+
+    DestroyString(Token);
+    DestroyString(Type);
+    return(result);
 }
 
-GlobalConnectionChain=CopyStr(GlobalConnectionChain, Chain);
-
-DestroyString(Token);
-DestroyString(Type);
-return(result);
-}
 
 
-
-int DoHTTPProxyTunnel(STREAM *S, const char *Host, int Port, const char *Destination, int Flags)
+int ConnectHopHTTPSProxy(STREAM *S, const char *Proxy, const char *Destination)
 {
-char *Tempstr=NULL, *Token=NULL;
-const char *ptr=NULL;
-int result=FALSE;
+    char *Tempstr=NULL, *Token=NULL;
+    char *Proto=NULL, *Host=NULL, *User=NULL, *Pass=NULL;
+    const char *ptr=NULL;
+    int result=FALSE, Port;
 
-	S->in_fd=TCPConnect(Host,Port,0); 
-	S->out_fd=S->in_fd;
-	if (S->in_fd == -1) return(FALSE);
+    ParseConnectDetails(Proxy, &Token, &Host, &Token, &User, &Pass, NULL);
+    Port=atoi(Token);
+    if (! (S->State & SS_INITIAL_CONNECT_DONE))
+    {
+        if (Port==0) Port=443;
+        S->in_fd=TCPConnect(Host,Port,0);
+        S->out_fd=S->in_fd;
+        if (S->in_fd == -1)
+        {
+            RaiseError(0, "ConnectHopHTTPSProxy", "failed to connect to proxy at %s:%d", Host, Port);
+            return(FALSE);
+        }
+    }
 
-	ptr=Destination;
-	if (strncmp(ptr,"tcp:",4)==0) ptr+=4;
-	Tempstr=FormatStr(Tempstr,"CONNECT %s HTTP/1.1\r\n\r\n",ptr);
+    ptr=Destination;
+    if (strncmp(ptr,"tcp:",4)==0) ptr+=4;
+    Tempstr=FormatStr(Tempstr,"CONNECT %s HTTP/1.1\r\n\r\n",ptr);
 
-	STREAMWriteLine(Tempstr,S);
-	STREAMFlush(S);
-	
-	Tempstr=STREAMReadLine(Tempstr,S);
-	StripTrailingWhitespace(Tempstr);
+    STREAMWriteLine(Tempstr,S);
+    STREAMFlush(S);
 
-	ptr=GetToken(Tempstr," ",&Token,0);
-	ptr=GetToken(ptr," ",&Token,0);
+    Tempstr=STREAMReadLine(Tempstr,S);
+    if (Tempstr)
+    {
+        StripTrailingWhitespace(Tempstr);
 
-	if (*Token=='2') result=TRUE;
-	while (StrLen(Tempstr))
-	{
-		Tempstr=STREAMReadLine(Tempstr,S);
-		StripTrailingWhitespace(Tempstr);
-	}
+        ptr=GetToken(Tempstr," ",&Token,0);
+        ptr=GetToken(ptr," ",&Token,0);
 
-DestroyString(Tempstr);
-DestroyString(Token);
+        if (*Token=='2') result=TRUE;
+        else RaiseError(0, "ConnectHopHTTPSProxy", "proxy request to %s:%d failed. %s", Host, Port, Tempstr);
 
-return(result);
+        while (StrLen(Tempstr))
+        {
+            Tempstr=STREAMReadLine(Tempstr,S);
+            StripTrailingWhitespace(Tempstr);
+        }
+    }
+    else RaiseError(0, "ConnectHopHTTPSProxy", "proxy request to %s:%d failed. Server Disconnectd.", Host, Port);
+
+    DestroyString(Tempstr);
+    DestroyString(Token);
+    DestroyString(Host);
+    DestroyString(User);
+    DestroyString(Pass);
+
+    return(result);
 }
 
 
@@ -77,214 +102,253 @@ return(result);
 
 int ConnectHopSocks5Auth(STREAM *S, const char *User, const char *Pass)
 {
-char *Tempstr=NULL, *ptr;
-int result, RetVal=FALSE;
-uint8_t len;
+    char *Tempstr=NULL;
+    const char *p_Password;
+    char *ptr;
+    int result, RetVal=FALSE;
+    uint8_t len, passlen;
 
-Tempstr=SetStrLen(Tempstr, 10);
+    Tempstr=SetStrLen(Tempstr, 10);
 
 //socks5 version
-Tempstr[0]=5;
+    Tempstr[0]=5;
 //Number of Auth Methods (just 1, username/password)
-Tempstr[1]=1;
+    Tempstr[1]=1;
 //Auth method 2, username/password
-if (StrValid(User) || StrValid(Pass)) Tempstr[2]=SOCKS5_AUTH_PASSWD;
-else Tempstr[2]=SOCKS5_AUTH_NONE;
+    if (StrValid(User) || StrValid(Pass)) Tempstr[2]=SOCKS5_AUTH_PASSWD;
+    else Tempstr[2]=SOCKS5_AUTH_NONE;
 
-STREAMWriteBytes(S,Tempstr,3);
-STREAMFlush(S);
+    STREAMWriteBytes(S,Tempstr,3);
+    STREAMFlush(S);
 
-result=STREAMReadBytes(S,Tempstr,10);
-if ((result > 1) && (Tempstr[0]==5))
-{
-	// Second Byte is authentication type selected by the server
-	switch (Tempstr[1])
-	{
-	//no authentication required
-	case 0:
-		RetVal=TRUE;
-	break;
+    result=STREAMReadBytes(S,Tempstr,10);
+    if ((result > 1) && (Tempstr[0]==5))
+    {
+        // Second Byte is authentication type selected by the server
+        switch (Tempstr[1])
+        {
+        //no authentication required
+        case 0:
+            RetVal=TRUE;
+            break;
 
-	//gssapi
-	case 1:
-	break;
+        //gssapi
+        case 1:
+            break;
 
-	//username/password
-	case 2:
-	Tempstr=SetStrLen(Tempstr, StrLen(User) + StrLen(Pass) + 10);
-	ptr=Tempstr;
-	//version 1 of username/password authentication
-	*ptr=1;
-	ptr++;
+        //username/password
+        case 2:
+            if (Pass)
+            {
+                p_Password=Pass;
+                passlen=strlen(Pass);
 
-	//username
-	len=StrLen(User) & 0xFF;
-	*ptr=len;
-	ptr++;
-	memcpy(ptr, User, len);
-	ptr+=len;
+            }
+            // must be careful with password len, as it won't be null terminated
+            else passlen=CredsStoreLookup("", User, &p_Password);
 
-	//password
-	len=StrLen(Pass) & 0xFF;
-	*ptr=len;
-	ptr++;
-	memcpy(ptr, Pass, len);
-	ptr+=len;
+            Tempstr=SetStrLen(Tempstr, StrLen(User) + passlen + 10);
+            ptr=Tempstr;
+            //version 1 of username/password authentication
+            *ptr=1;
+            ptr++;
 
-	STREAMWriteBytes(S,Tempstr,ptr-Tempstr);
-	STREAMFlush(S);
+            //username
+            len=StrLen(User) & 0xFF;
+            *ptr=len;
+            ptr++;
+            memcpy(ptr, User, len);
+            ptr+=len;
 
-	result=STREAMReadBytes(S,Tempstr,10);
+            //password
+            len=passlen & 0xFF;
+            *ptr=len;
+            ptr++;
+            memcpy(ptr, Pass, len);
+            ptr+=len;
 
-	//two bytes reply. Byte1 is Version Byte2 is 0 for success
-	if ((result > 1) && (Tempstr[0]==1) && (Tempstr[1]==0)) RetVal=TRUE;
-	break;
-	}
+            len=ptr-Tempstr;
+            STREAMWriteBytes(S,Tempstr,len);
+
+            //we have to flush to be sure data is sent, but this also wipes output
+            //data buffer, which is useful given that we just sent a password
+            STREAMFlush(S);
+
+            //As this memory contained a password, we wipe it
+            xmemset(Tempstr, 0, len);
+
+            result=STREAMReadBytes(S,Tempstr,10);
+
+            //two bytes reply. Byte1 is Version Byte2 is 0 for success
+            if ((result > 1) && (Tempstr[0]==1) && (Tempstr[1]==0)) RetVal=TRUE;
+            break;
+        }
+    }
+
+    DestroyString(Tempstr);
+
+    return(RetVal);
 }
 
-DestroyString(Tempstr);
-
-return(RetVal);
-}
 
 
-
-int ConnectHopSocks(STREAM *S, int Type, const char *Host, int Port, const char *User, const char *Pass, const char *Path)
+int ConnectHopSocks(STREAM *S, int SocksLevel, const char *ProxyURL, const char *Destination)
 {
-char *Tempstr=NULL;
-uint8_t *ptr;
-uint32_t IP;
-char *Token=NULL;
-const char *tptr;
-int result, RetVal=FALSE, val;
-uint8_t HostType=HT_IP4;
+    char *Tempstr=NULL;
+    char *Token=NULL, *Host=NULL, *User=NULL, *Pass=NULL;
+    uint8_t *ptr;
+    uint32_t IP;
+    const char *tptr;
+    int result, RetVal=FALSE, val;
+    uint8_t HostType=HT_IP4;
 
-S->in_fd=TCPConnect(Host,Port,0); 
-S->out_fd=S->in_fd;
-if (S->in_fd == -1) return(FALSE);
+    ParseConnectDetails(ProxyURL, NULL, &Host, &Token, &User, &Pass, NULL);
+    if (! (S->State & SS_INITIAL_CONNECT_DONE))
+    {
+        val=atoi(Token);
+        S->in_fd=TCPConnect(Host, val, 0);
+        S->out_fd=S->in_fd;
+        if (S->in_fd == -1)
+        {
+            RaiseError(0, "ConnectHopSocks", "connection to socks proxy at %s failed", ProxyURL);
+            return(FALSE);
+        }
 
 
-if (Type==CONNECT_HOP_SOCKS5)
-{
-if (! ConnectHopSocks5Auth(S, User, Pass)) return(FALSE);
-}
+        if (SocksLevel==CONNECT_HOP_SOCKS5)
+        {
+            if (! ConnectHopSocks5Auth(S, User, Pass))
+            {
+                RaiseError(0, "ConnectHopSocks", "authentication to socks proxy at %s failed", ProxyURL);
+                return(FALSE);
+            }
+        }
+    }
 
-//Horrid binary protocol. 
-Tempstr=SetStrLen(Tempstr, StrLen(User) + 20 + StrLen(Path));
-ptr=Tempstr;
+//Horrid binary protocol.
+    Tempstr=SetStrLen(Tempstr, StrLen(User) + 20 + StrLen(Destination));
+    ptr=Tempstr;
 
 //version
-if (Type==CONNECT_HOP_SOCKS5) *ptr=5;
-else *ptr=4; //version number
-ptr++;
+    if (SocksLevel==CONNECT_HOP_SOCKS5) *ptr=5;
+    else *ptr=4; //version number
+    ptr++;
 
 //connection type
-*ptr=1; //outward connection (2 binds a port for incoming)
-ptr++;
-
-//Sort out path now
-tptr=Path;
-if (strncmp(tptr,"tcp:",4)==0) tptr+=4;
-tptr=GetToken(tptr,":",&Token,0);
-if (IsIP4Address(Token)) HostType=HT_IP4;
-else if (IsIP6Address(Token)) HostType=HT_IP6;
-else HostType=HT_DOMAIN;
+    *ptr=1; //outward connection (2 binds a port for incoming)
+    ptr++;
 
 
-if (Type==CONNECT_HOP_SOCKS5) 
-{
+
+//Sort out destination now
+    tptr=Destination;
+    if (strncmp(tptr,"tcp:",4)==0) tptr+=4;
+    tptr=GetToken(tptr,":",&Token,0);
+    if (IsIP4Address(Token)) HostType=HT_IP4;
+    else if (IsIP6Address(Token)) HostType=HT_IP6;
+    else HostType=HT_DOMAIN;
+
+
+    if (SocksLevel==CONNECT_HOP_SOCKS5)
+    {
 //Socks 5 has a 'reserved' byte after the connection type
-	*ptr=0;
-	ptr++;
+        *ptr=0;
+        ptr++;
 
-	*ptr=HostType;
-	ptr++;
-	switch (HostType)
-	{
-	case HT_IP4:
-	*((uint32_t *) ptr) =StrtoIP(Token);
-	ptr+=4;
-	break;
+        *ptr=HostType;
+        ptr++;
+        switch (HostType)
+        {
+        case HT_IP4:
+            *((uint32_t *) ptr) =StrtoIP(Token);
+            ptr+=4;
+            break;
 
-	case HT_IP6:
-	break;
+        case HT_IP6:
+            break;
 
-	default:
-	val=StrLen(Token);
-	*ptr=val;
-	ptr++;
-	memcpy(ptr, Token, val);
-	ptr+=val;
-	break;
-	}
-}
+        default:
+            val=StrLen(Token);
+            *ptr=val;
+            ptr++;
+            memcpy(ptr, Token, val);
+            ptr+=val;
+            break;
+        }
+    }
 
 
 //destination port. By a weird coincidence this is in the right place
 //for either socks4 or 5, despite the fact that it comes after the
 //host in socks5, and before the host in socks4
-*((uint16_t *) ptr) =htons(atoi(tptr));
-ptr+=2;
+    *((uint16_t *) ptr) =htons(atoi(tptr));
+    ptr+=2;
 
-if (Type==CONNECT_HOP_SOCKS4)
-{ 
-	//destination host
-	switch (HostType)
-	{
-	case HT_IP4:
-		*((uint32_t *) ptr) =StrtoIP(Token);
-		ptr+=4;
-		val=StrLen(User)+1;
-		memcpy(ptr,User,val);
-		ptr+=val;
-	break;
-	
-	default:
-		*((uint32_t *) ptr) =StrtoIP("0.0.0.1");
-		ptr+=4;
-	break;
-	}
+    if (SocksLevel==CONNECT_HOP_SOCKS4)
+    {
+        //destination host
+        switch (HostType)
+        {
+        case HT_IP4:
+            *((uint32_t *) ptr) =StrtoIP(Token);
+            ptr+=4;
+            val=StrLen(User)+1;
+            memcpy(ptr,User,val);
+            ptr+=val;
+            break;
 
-	val=StrLen(User)+1;
-	memcpy(ptr, User, val);
-	ptr+=val;
+        default:
+            *((uint32_t *) ptr) =StrtoIP("0.0.0.1");
+            ptr+=4;
+            break;
+        }
 
-	//+1 to include terminating \0
-	val=StrLen(Token) +1;
-	memcpy(ptr, Token, val);
-	ptr+=val;
-}
+        val=StrLen(User)+1;
+        memcpy(ptr, User, val);
+        ptr+=val;
 
-STREAMWriteBytes(S,Tempstr,(char *)ptr-Tempstr); STREAMFlush(S);
-Tempstr=SetStrLen(Tempstr, 32);
-result=STREAMReadBytes(S,Tempstr,32);
+        //+1 to include terminating \0
+        val=StrLen(Token) +1;
+        memcpy(ptr, Token, val);
+        ptr+=val;
+    }
 
-
-if (Type==CONNECT_HOP_SOCKS5)
-{
-	if ((result > 8) && (Tempstr[0]==5) && (Tempstr[1]==0)) 
-	{
-		RetVal=TRUE;
-	}
-}
-else
-{
-	//Positive response will be 0x00 0x5a 0x00 0x00 0x00 0x00 0x00 0x00
-	//although only the leading two bytes (0x00 0x5a, or \0Z) matters
-	if ((result==8) && (Tempstr[0]=='\0') && (Tempstr[1]=='Z')) 
-	{
-		RetVal=TRUE;
-	
-		IP=*(uint32_t *) (Tempstr + 4);
-		if (IP != 0) STREAMSetValue(S, "IPAddress", IPtoStr(IP));
-	}
-}
+    STREAMWriteBytes(S,Tempstr,(char *)ptr-Tempstr);
+    STREAMFlush(S);
+    Tempstr=SetStrLen(Tempstr, 32);
+    result=STREAMReadBytes(S,Tempstr,32);
 
 
-DestroyString(Tempstr);
-DestroyString(Token);
+    if (SocksLevel==CONNECT_HOP_SOCKS5)
+    {
+        if ((result > 8) && (Tempstr[0]==5) && (Tempstr[1]==0))
+        {
+            RetVal=TRUE;
+        }
+    }
+    else
+    {
+        //Positive response will be 0x00 0x5a 0x00 0x00 0x00 0x00 0x00 0x00
+        //although only the leading two bytes (0x00 0x5a, or \0Z) matters
+        if ((result==8) && (Tempstr[0]=='\0') && (Tempstr[1]=='Z'))
+        {
+            RetVal=TRUE;
 
-return(RetVal);
+            IP=*(uint32_t *) (Tempstr + 4);
+            if (IP != 0) STREAMSetValue(S, "IPAddress", IPtoStr(IP));
+        }
+    }
+
+
+    if (! RetVal) RaiseError(0, "ConnectHopSocks", "socks proxy at %s refused connection to %s", ProxyURL, Destination);
+
+    DestroyString(Tempstr);
+    DestroyString(Host);
+    DestroyString(User);
+    DestroyString(Pass);
+    DestroyString(Token);
+
+    return(RetVal);
 }
 
 
@@ -292,258 +356,183 @@ return(RetVal);
 
 int SendPublicKeyToRemote(STREAM *S, char *KeyFile, char *LocalPath)
 {
-char *Tempstr=NULL, *Line=NULL;
-STREAM *LocalFile;
+    char *Tempstr=NULL, *Line=NULL;
+    STREAM *LocalFile;
 
 
-Tempstr=FormatStr(Tempstr,"rm -f %s ; touch %s; chmod 0600 %s\n",KeyFile,KeyFile,KeyFile);
-STREAMWriteLine(Tempstr,S);
-LocalFile=STREAMFileOpen(LocalPath,SF_RDONLY);
-if (LocalFile)
-{
-Line=STREAMReadLine(Line,LocalFile);
-while (Line)
-{
-StripTrailingWhitespace(Line);
-Tempstr=FormatStr(Tempstr,"echo '%s' >> %s\n",Line,KeyFile);
-STREAMWriteLine(Tempstr,S);
-Line=STREAMReadLine(Line,LocalFile);
-}
-STREAMClose(LocalFile);
-}
+    Tempstr=FormatStr(Tempstr,"rm -f %s ; touch %s; chmod 0600 %s\n",KeyFile,KeyFile,KeyFile);
+    STREAMWriteLine(Tempstr,S);
+    LocalFile=STREAMFileOpen(LocalPath,SF_RDONLY);
+    if (LocalFile)
+    {
+        Line=STREAMReadLine(Line,LocalFile);
+        while (Line)
+        {
+            StripTrailingWhitespace(Line);
+            Tempstr=FormatStr(Tempstr,"echo '%s' >> %s\n",Line,KeyFile);
+            STREAMWriteLine(Tempstr,S);
+            Line=STREAMReadLine(Line,LocalFile);
+        }
+        STREAMClose(LocalFile);
+    }
 
-return(TRUE);
-}
-
-
-
-int ConnectHopSSH(STREAM *S,int Type, char *Host, int Port, char *User, char *Pass, char *NextHop)
-{
-char *Tempstr=NULL, *KeyFile=NULL, *Token=NULL, *Token2=NULL;
-STREAM *AuthS;
-int result=FALSE, val;
-unsigned int TunnelPort=0;
-
-if (Type==CONNECT_HOP_SSHTUNNEL) 
-{
-	TunnelPort=(rand() % (0xFFFF - 9000)) +9000;
-	//Host will be Token, and port Token2
-	ParseConnectDetails(NextHop, NULL, &Token, &Token2, NULL, NULL, NULL);
-	Tempstr=FormatStr(Tempstr,"ssh -2 -N %s@%s  -L %d:%s:%s ",User,Host,TunnelPort,Token,Token2);
-
-}
-else Tempstr=MCopyStr(Tempstr,"ssh -2 -T ",User,"@",Host, " ", NULL );
-
-if (strncmp(Pass,"keyfile:",8)==0)
-{
-
-		if (S->in_fd != -1)
-		{
-			Token=FormatStr(Token,".%d-%d",getpid(),time(NULL));
-			SendPublicKeyToRemote(S,Token,Pass+8);
-			KeyFile=CopyStr(KeyFile,Token);
-		}
-		Tempstr=MCatStr(Tempstr,"-i ",KeyFile," ",NULL);
-		}
-
-		if (Port > 0)
-		{
-		Token=FormatStr(Token," -p %d ",Port);
-		Tempstr=CatStr(Tempstr,Token);
-		}
-
-		if (Type==CONNECT_HOP_SSHTUNNEL) 
-		{
-			Tempstr=CatStr(Tempstr, " 2> /dev/null");
-			AuthS=STREAMSpawnCommand(Tempstr, COMMS_BY_PTY, "");
-			STREAMSetValue(S,"HelperPID:SSH",STREAMGetValue(AuthS,"PeerPID"));
-		}
-		else if (S->in_fd==-1) 
-		{
-			Tempstr=CatStr(Tempstr, " 2> /dev/null");
-			PseudoTTYSpawn(&S->in_fd,Tempstr,0,"");
-			S->out_fd=S->in_fd;
-			if (S->in_fd > -1)
-			{
-				result=TRUE;
-				STREAMSetFlushType(S,FLUSH_LINE,0,0);
-			}
-			AuthS=S;
-		}
-		else 
-		{
-			if (StrLen(KeyFile)) Tempstr=MCatStr(Tempstr," ; rm -f ",KeyFile,NULL);
-			Tempstr=CatStr(Tempstr,"; exit\n");
-			STREAMWriteLine(Tempstr,S);
-			result=TRUE;
-			AuthS=S;
-		}
-
-		if ((StrLen(KeyFile)==0) && (StrLen(Pass) > 0)) 
-		{
-			Token=MCopyStr(Token,Pass,"\n",NULL);
-			for (val=0; val < 3; val++)
-			{
-			if (STREAMExpectAndReply(AuthS,"assword:",Token)) break;
-			}
-		}
-		STREAMSetTimeout(AuthS,100);
-		//STREAMExpectSilence(AuthS);
-		sleep(3);
-
-		if (Type==CONNECT_HOP_SSHTUNNEL) 
-		{
-			S->in_fd=TCPConnect("127.0.0.1",TunnelPort,0);
-			S->out_fd=S->in_fd;
-			if (S->in_fd > -1) result=TRUE;
-		}
-
-
-DestroyString(Tempstr);
-DestroyString(KeyFile);
-DestroyString(Token2);
-DestroyString(Token);
-
-return(result);
+    return(TRUE);
 }
 
 
-int STREAMProcessConnectHop(STREAM *S, char *HopURL, int LastHop)
+
+int ConnectHopSSH(STREAM *S, int Type, const char *ProxyURL, const char *Destination)
 {
-int val, result=FALSE;
-char *Token=NULL, *Token2=NULL;
-char *Tempstr=NULL;
-char *User=NULL, *Host=NULL,*Pass=NULL, *KeyFile=NULL;
-int Port=0;
-
-ParseConnectDetails(HopURL, &Token, &Host, &Token2, &User, &Pass, NULL);
-
-Port=atoi(Token2);
-
-val=MatchTokenFromList(Token,HopTypes,0);
-switch (val)
-{
-	case CONNECT_HOP_TCP:
-		if (S->in_fd==-1)
-		{
-			S->in_fd=TCPConnect(Host,Port,0); 
-			S->out_fd=S->in_fd;
-			if (S->in_fd > -1) result=TRUE;
-		}
-		break;
-
-	case CONNECT_HOP_HTTPTUNNEL:
-		result=DoHTTPProxyTunnel(S, Host, Port, S->Path, 0);
-	break;	
-
-	case CONNECT_HOP_SSH:
-	case CONNECT_HOP_SSHTUNNEL:
-		result=ConnectHopSSH(S, val, Host, Port, User, Pass, S->Path);
-	break;
-
-	case CONNECT_HOP_SOCKS4:
-	case CONNECT_HOP_SOCKS5:
-		result=ConnectHopSocks(S, val, Host, Port, User, Pass, S->Path);
-	break;
-
-	case CONNECT_HOP_SHELL_CMD:
-	break;
-
-	case CONNECT_HOP_TELNET:
-		if (Port > 0)
-		{
-		Tempstr=FormatStr(Tempstr,"telnet -8 %s %d ",Host, Port);
-		}
-		else Tempstr=FormatStr(Tempstr,"telnet -8 %s ",Host);
-
-		if (S->in_fd==-1) 
-		{
-			PseudoTTYSpawn(& S->in_fd,Tempstr,0,"");
-		        S->out_fd=S->in_fd;
-			if (S->in_fd > -1)
-			{
-				result=TRUE;
-				STREAMSetFlushType(S,FLUSH_LINE,0,0);
-			}
-
-		}
-		else 
-		{
-			Tempstr=CatStr(Tempstr,";exit\n");
-			STREAMWriteLine(Tempstr,S);
-			result=TRUE;
-		}
-		if (StrLen(User) > 0) 
-		{
-			Tempstr=MCopyStr(Tempstr,User,"\n",NULL);
-			STREAMExpectAndReply(S,"ogin:",Tempstr);
-		}
-		if (StrLen(Pass) > 0) 
-		{
-			Tempstr=MCopyStr(Tempstr,Pass,"\n",NULL);
-			STREAMExpectAndReply(S,"assword:",Tempstr);
-		}
-		STREAMExpectSilence(S,2);
-		break;
+    char *Tempstr=NULL, *Token=NULL, *Token2=NULL;
+    char *Host=NULL, *User=NULL, *Pass=NULL;
+    STREAM *tmpS;
+    int result=FALSE, val, i;
+    unsigned int Port=22, DPort=0;
 
 
-}
+    ParseConnectDetails(ProxyURL, NULL, &Host, &Token, &User, &Pass, NULL);
+    if (StrValid(Token)) Port=atoi(Token);
 
-DestroyString(Tempstr);
-DestroyString(Token);
-DestroyString(KeyFile);
-DestroyString(Host);
-DestroyString(User);
-DestroyString(Pass);
+    if (Type==CONNECT_HOP_SSHTUNNEL)
+    {
+//get hostname and port of next hop
+        DPort=(rand() % (0xFFFF - 9000)) +9000;
+        //Host will be Token, and port Token2
+        ParseConnectDetails(Destination, NULL, &Token, &Token2, NULL, NULL, NULL);
+        Tempstr=FormatStr(Tempstr,"tunnel:%d:%s:%s ",DPort,Token,Token2);
+        tmpS=SSHConnect(Host, Port, User, Pass, Tempstr);
+        if (tmpS)
+        {
+            if (! S->Items) S->Items=ListCreate();
+            ListAddNamedItem(S->Items, "LU:AssociatedStream", tmpS);
+            for (i=0; i < 30; i++)
+            {
+                S->in_fd=TCPConnect("127.0.0.1",DPort,0);
+                if (S->in_fd > -1)
+                {
+                    S->out_fd=S->in_fd;
+                    result=TRUE;
+                    break;
+                }
+                usleep(200000);
+            }
+        }
+    }
+    else
+    {
+        ParseConnectDetails(Destination, NULL, &Token, &Token2, NULL, NULL, NULL);
+        DPort=atoi(Token2);
+        Tempstr=FormatStr(Tempstr,"stdin:%s:%d", Token, DPort);
+        tmpS=SSHConnect(Host, Port, User, Pass, Tempstr);
+        if (tmpS)
+        {
+            usleep(200000);
+            result=TRUE;
+            S->in_fd=tmpS->in_fd;
+            S->out_fd=tmpS->out_fd;
+        }
 
-STREAMFlush(S);
-return(result);
+        if (tmpS)
+        {
+//set these to -1 so STREAMClose won't close our connection
+            tmpS->in_fd=-1;
+            tmpS->out_fd=-1;
+            STREAMClose(tmpS);
+        }
+    }
+
+    if (! result) RaiseError(0, "ConnectHopSSH", "failed to sshtunnel via %s to %s", ProxyURL, Destination);
+
+    DestroyString(Tempstr);
+    DestroyString(Token2);
+    DestroyString(Token);
+    DestroyString(Host);
+    DestroyString(User);
+    DestroyString(Pass);
+
+    return(result);
 }
 
 
-/*
-int STREAMInternalLastHop(STREAM *S,char *DesiredHost,int DesiredPort, char *LastHop)
+int STREAMProcessConnectHops(STREAM *S, const char *HopList)
 {
-int result, Type,Port;
-char *Host=NULL, *User=NULL, *Pass=NULL, *KeyFile=NULL;
+    int val, result=FALSE;
+    char *Dest=NULL, *HopURL=NULL, *NextHop=NULL, *Token=NULL;
+    const char *ptr;
+    int Port=0, count=0;
 
-ParseConnectHop(LastHop, &Type,  &Host, &User, &Pass, &KeyFile, &Port);
-switch (Type)
-{
 
+    ptr=GetToken(HopList, ",", &HopURL,0);
+
+//Note we check 'StrValid' not just whether ptr is null. This is because ptr will be an empty string
+//for the last token, and we don't want to process th last token, which will be the 'actual' connection
+    while (StrValid(ptr))
+    {
+        ptr=GetToken(ptr, ",", &NextHop,0);
+        ParseConnectDetails(NextHop, NULL, &Dest, &Token, NULL, NULL, NULL);
+        Dest=MCatStr(Dest,":",Token,NULL);
+
+        GetToken(HopURL,":",&Token,0);
+        val=MatchTokenFromList(Token,HopTypes,0);
+
+        switch (val)
+        {
+        case CONNECT_HOP_TCP:
+            //this type assumes that connecting to a host and port instantly puts us through to the Destination.
+            //thus we do nothing with the Destination value, except maybe log it if connection fails
+            //It's a no-op unless it's the first item in the connection chain, as otherwise previous connections
+            //will have effectively processed this already
+            if (count > 0) result=TRUE;
+            else
+            {
+                if (STREAMDirectConnect(S, HopURL, 0)) result=TRUE;
+                else RaiseError(0, "ConnectHopTCP", "failed to connect to %s for destination %s", HopURL, Dest);
+            }
+            break;
+
+        case CONNECT_HOP_HTTPTUNNEL:
+            result=ConnectHopHTTPSProxy(S, HopURL, Dest);
+            break;
+
+        case CONNECT_HOP_SSH:
+        case CONNECT_HOP_SSHTUNNEL:
+            if (count==0) result=ConnectHopSSH(S, val, HopURL, Dest);
+            else
+            {
+                result=FALSE;
+                RaiseError(0, "ConnectHopSSH", "SSH connect hops must be first in hop chain. Connection failed to %s for destination %s", HopURL, Dest);
+            }
+            break;
+
+        case CONNECT_HOP_SOCKS4:
+        case CONNECT_HOP_SOCKS5:
+            result=ConnectHopSocks(S, val, HopURL, Dest);
+            break;
+
+        default:
+            RaiseError(0, "ConnectHop", "unknown connection proxy type %s", HopURL);
+            break;
+        }
+
+        S->State=SS_INITIAL_CONNECT_DONE;
+        count++;
+        HopURL=CopyStr(HopURL, NextHop);
+    }
+
+    if (StrValid(HopURL))
+    {
+        if (! StrLen(S->Path)) S->Path=CopyStr(S->Path,HopURL);
+        if (strncmp(HopURL,"ssl:",4)==0) DoSSLClientNegotiation(S,0);
+    }
+
+    DestroyString(HopURL);
+    DestroyString(NextHop);
+    DestroyString(Token);
+    DestroyString(Dest);
+
+    STREAMFlush(S);
+    return(result);
 }
-result=STREAMProcessConnectHop(S, Tempstr, TRUE);
-
-DestroyString(Tempstr);
-DestroyString(Host);
-DestroyString(User);
-DestroyString(Pass);
-DestroyString(KeyFile);
-return(result);
-}
-*/
 
 
-
-int STREAMAddConnectionHop(STREAM *S, char *HopsString)
-{
-char *Tempstr=NULL, *Value=NULL, *ptr;
-
-if (! S->Values) S->Values=ListCreate();
-
-ptr=GetToken(HopsString, ",", &Value,0);
-while (ptr)
-{
-StripTrailingWhitespace(Value);
-StripLeadingWhitespace(Value);
-
-Tempstr=FormatStr(Tempstr,"ConnectHop:%d",ListSize(S->Values));
-STREAMSetValue(S,Tempstr,Value);
-ptr=GetToken(ptr, ",", &Value,0);
-}
-
-DestroyString(Tempstr);
-DestroyString(Value);
-return(TRUE);
-}
 

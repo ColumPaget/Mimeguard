@@ -1,10 +1,10 @@
 CC = gcc
 VERSION = 0.0.1
-CFLAGS = -g -O2
-LIBS = -lz -lc 
-FLAGS=$(LDFLAGS) $(CPPFLAGS) $(CFLAGS) -fPIC -DPACKAGE_NAME=\"\" -DPACKAGE_TARNAME=\"\" -DPACKAGE_VERSION=\"\" -DPACKAGE_STRING=\"\" -DPACKAGE_BUGREPORT=\"\" -DPACKAGE_URL=\"\" -DSTDC_HEADERS=1 -D_FILE_OFFSET_BITS=64 -DHAVE_LIBC=1 -DHAVE_PTSNAME_R=1 -DHAVE_SYS_TYPES_H=1 -DHAVE_SYS_STAT_H=1 -DHAVE_STDLIB_H=1 -DHAVE_STRING_H=1 -DHAVE_MEMORY_H=1 -DHAVE_STRINGS_H=1 -DHAVE_INTTYPES_H=1 -DHAVE_STDINT_H=1 -DHAVE_UNISTD_H=1 -DUSE_SENDFILE=1 -DHAVE_LIBZ=1 -DHAVE_OSS=1 -DHAVE_MADVISE -DHAVE_MADVISE_NOFORK -DHAVE_MADVISE_DONTDUMP -DHAVE_MLOCK
-prefix=/usr
-OBJ=string.o list.o socket.o unix_socket.o file.o tar.o ansi.o FileSystem.o GeneralFunctions.o DataProcessing.o EncryptedFiles.o g711.o sound.o pty.o Log.o http.o inet.o expect.o base64.o  crc32.o md5c.o sha1.o sha2.o whirlpool.o jh_ref.o Hash.o ssh.o Compression.o oauth.o libsettings.o Vars.o Time.o Markup.o SpawnPrograms.o Tokenizer.o PatternMatch.o ParseURL.o DataParser.o ConnectionChain.o openssl.o process.o securemem.o
+CFLAGS = -g -O2 
+LIBS = -lz -lc -lc -lc -lc -lc -lc -lc 
+FLAGS=$(LDFLAGS) $(CPPFLAGS) $(CFLAGS) -fPIC -DPACKAGE_NAME=\"\" -DPACKAGE_TARNAME=\"\" -DPACKAGE_VERSION=\"\" -DPACKAGE_STRING=\"\" -DPACKAGE_BUGREPORT=\"\" -DPACKAGE_URL=\"\" -DSTDC_HEADERS=1 -D_FILE_OFFSET_BITS=64 -DHAVE_LIBC=1 -DHAVE_PTSNAME_R=1 -DHAVE_LIBC=1 -DHAVE_UNSHARE=1 -DHAVE_LIBC=1 -DHAVE_UMOUNT2=1 -DHAVE_LIBC=1 -DHAVE_UMOUNT=1 -DHAVE_LIBC=1 -DHAVE_MKOSTEMP=1 -DHAVE_LIBC=1 -DHAVE_XATTR=1 -DHAVE_LIBC=1 -DHAVE_LIBZ=1 -DHAVE_MADVISE -DHAVE_MADVISE_NOFORK -DHAVE_MADVISE_DONTDUMP -DHAVE_MLOCK
+prefix=/usr/local
+OBJ=String.o List.o Socket.o UnixSocket.o Stream.o Errors.o Terminal.o FileSystem.o GeneralFunctions.o DataProcessing.o Pty.o Log.o Http.o inet.o Expect.o base64.o  crc32.o md5c.o sha1.o sha2.o whirlpool.o jh_ref.o Hash.o Ssh.o Compression.o OAuth.o LibSettings.o Vars.o Time.o Markup.o SpawnPrograms.o Tokenizer.o PatternMatch.o URL.o DataParser.o ConnectionChain.o OpenSSL.o Process.o Encodings.o RawData.o SecureMem.o
 
 
 all: $(OBJ)
@@ -13,41 +13,36 @@ all: $(OBJ)
 	ar rcs libUseful-2.8.a $(OBJ)
 
 
-string.o: string.h string.c
-	$(CC) $(FLAGS) -c string.c
+String.o: String.h String.c
+	$(CC) $(FLAGS) -c String.c
 
-list.o: list.h list.c
-	$(CC) $(FLAGS) -c list.c
+List.o: List.h List.c
+	$(CC) $(FLAGS) -c List.c
 
-socket.o: socket.h socket.c
-	$(CC) $(FLAGS) -c socket.c
+Socket.o: Socket.h Socket.c
+	$(CC) $(FLAGS) -c Socket.c
 
-g711.o: g711.h g711.c
-	$(CC) $(FLAGS) -c g711.c
+Pty.o: Pty.h Pty.c
+	$(CC) $(FLAGS) -c Pty.c
 
-sound.o: sound.h sound.c
-	$(CC) $(FLAGS) -c sound.c
+Http.o: Http.h Http.c
+	$(CC) $(FLAGS) -c Http.c
 
-pty.o: pty.h pty.c
-	$(CC) $(FLAGS) -c pty.c
+Stream.o: Stream.h Stream.c
+	$(CC) $(FLAGS) -c Stream.c
 
-http.o: http.h http.c
-	$(CC) $(FLAGS) -c http.c
+Terminal.o: Terminal.h Terminal.c
+	$(CC) $(FLAGS) -c Terminal.c
 
-file.o: file.h file.c
-	$(CC) $(FLAGS) -c file.c
+Errors.o: Errors.h Errors.c
+	$(CC) $(FLAGS) -c Errors.c
 
-tar.o: tar.h tar.c
-	$(CC) $(FLAGS) -c tar.c
-
-ansi.o: ansi.h ansi.c
-	$(CC) $(FLAGS) -c ansi.c
 
 Log.o: Log.h Log.c
 	$(CC) $(FLAGS) -c Log.c
 
-unix_socket.o: unix_socket.h unix_socket.c
-	$(CC) $(FLAGS) -c unix_socket.c
+UnixSocket.o: UnixSocket.h UnixSocket.c
+	$(CC) $(FLAGS) -c UnixSocket.c
 
 PatternMatch.o: PatternMatch.h PatternMatch.c
 	$(CC) $(FLAGS) -c PatternMatch.c
@@ -64,8 +59,8 @@ Tokenizer.o: Tokenizer.h Tokenizer.c
 Markup.o: Markup.h Markup.c
 	$(CC) $(FLAGS) -c Markup.c
 
-ParseURL.o: ParseURL.h ParseURL.c
-	$(CC) $(FLAGS) -c ParseURL.c
+URL.o: URL.h URL.c
+	$(CC) $(FLAGS) -c URL.c
 
 DataParser.o: DataParser.h DataParser.c
 	$(CC) $(FLAGS) -c DataParser.c
@@ -73,11 +68,11 @@ DataParser.o: DataParser.h DataParser.c
 inet.o: inet.h inet.c
 	$(CC) $(FLAGS) -c inet.c
 
-expect.o: expect.h expect.c
-	$(CC) $(FLAGS) -c expect.c
+Expect.o: Expect.h Expect.c
+	$(CC) $(FLAGS) -c Expect.c
 
-securemem.o: securemem.h securemem.c
-	$(CC) $(FLAGS) -c securemem.c
+SecureMem.o: SecureMem.h SecureMem.c
+	$(CC) $(FLAGS) -c SecureMem.c
 
 GeneralFunctions.o: GeneralFunctions.h GeneralFunctions.c
 	$(CC) $(FLAGS) -c GeneralFunctions.c
@@ -85,14 +80,11 @@ GeneralFunctions.o: GeneralFunctions.h GeneralFunctions.c
 DataProcessing.o: DataProcessing.h DataProcessing.c
 	$(CC) $(FLAGS) -c DataProcessing.c
 
-EncryptedFiles.o: EncryptedFiles.h EncryptedFiles.c
-	$(CC) $(FLAGS) -c EncryptedFiles.c
-
 Hash.o: Hash.h Hash.c
 	$(CC) $(FLAGS) -c Hash.c
 
-ssh.o: ssh.h ssh.c
-	$(CC) $(FLAGS) -c ssh.c
+Ssh.o: Ssh.h Ssh.c
+	$(CC) $(FLAGS) -c Ssh.c
 
 Compression.o: Compression.h Compression.c
 	$(CC) $(FLAGS) -c Compression.c
@@ -121,14 +113,14 @@ whirlpool.o: whirlpool.c whirlpool.h
 jh_ref.o: jh_ref.c jh_ref.h
 	$(CC) $(FLAGS) -c jh_ref.c
 
-oauth.o: oauth.c oauth.h
-	$(CC) $(FLAGS) -c oauth.c
+OAuth.o: OAuth.c OAuth.h
+	$(CC) $(FLAGS) -c OAuth.c
 
-openssl.o: openssl.c openssl.h
-	$(CC) $(FLAGS) -c openssl.c
+OpenSSL.o: OpenSSL.c OpenSSL.h
+	$(CC) $(FLAGS) -c OpenSSL.c
 
-process.o: process.c process.h
-	$(CC) $(FLAGS) -c process.c
+Process.o: Process.c Process.h
+	$(CC) $(FLAGS) -c Process.c
 
 Vars.o: Vars.c Vars.h
 	$(CC) $(FLAGS) -c Vars.c
@@ -136,9 +128,16 @@ Vars.o: Vars.c Vars.h
 SpawnPrograms.o: SpawnPrograms.c SpawnPrograms.h
 	$(CC) $(FLAGS) -c SpawnPrograms.c
 
+Encodings.o: Encodings.c Encodings.h
+	$(CC) $(FLAGS) -c Encodings.c
+
+RawData.o: RawData.c RawData.h
+	$(CC) $(FLAGS) -c RawData.c
+
+
 #No dependancies, must always be compiled
-libsettings.o: libsettings.h libsettings.c
-	$(CC) $(FLAGS) -c libsettings.c
+LibSettings.o: LibSettings.h LibSettings.c
+	$(CC) $(FLAGS) -c LibSettings.c
 
 clean:
 	-rm -f *.o *.so *.a
@@ -148,4 +147,5 @@ clean:
 install:
 	@ln -s libUseful-2.8.so libUseful.so
 	@ln -s libUseful-2.8.a libUseful.a
-	@cp *.so *.a $(prefix)/lib ; mkdir $(prefix)/include/libUseful-$(VERSION) ; cp *.h $(prefix)/include/libUseful-$(VERSION)
+	@mkdir -p $(prefix)/lib; cp *.so *.a $(prefix)/lib ; mkdir -p $(prefix)/include/libUseful-$(VERSION) ; cp *.h $(prefix)/include/libUseful-$(VERSION)
+
