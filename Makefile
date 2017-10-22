@@ -68,4 +68,4 @@ clean:
 	@rm -f *.o */*.o */*.a */*.so mimeguard
 
 install: mimeguard
-	install-sh mimeguard $(bindir)
+	./install-sh mimeguard $(bindir)
