@@ -10,7 +10,7 @@
 
 const char *HTTP_AUTH_BY_TOKEN="AuthTokenType";
 ListNode *Cookies=NULL;
-int g_Flags=0;
+int LU_HTTPFlags=0;
 
 
 
@@ -347,8 +347,7 @@ HTTPInfoStruct *HTTPInfoCreate(const char *Protocol, const char *Host, int Port,
     Info->CustomSendHeaders=ListCreate();
     SetVar(Info->CustomSendHeaders,"Accept","*/*");
 
-    if (g_Flags) Info->Flags=g_Flags;
-
+    if (LU_HTTPFlags) Info->Flags=LU_HTTPFlags;
     ptr=LibUsefulGetValue("HTTP:Proxy");
     if (StrValid(ptr))
     {
@@ -1033,6 +1032,7 @@ int HTTPProcessResponse(HTTPInfoStruct *HTTPInfo)
                 HTTPInfo->PreviousRedirect=CopyStr(HTTPInfo->PreviousRedirect,HTTPInfo->RedirectPath);
                 ParseURL(HTTPInfo->RedirectPath, &Proto, &HTTPInfo->Host, &Tempstr,NULL, NULL,&HTTPInfo->Doc,NULL);
                 HTTPInfo->Port=atoi(Tempstr);
+            		STREAMSetValue(HTTPInfo->S,"HTTP:URL",HTTPInfo->RedirectPath);
 
                 //if HTTP_SSL_REWRITE is set, then all redirects get forced to https
                 if (HTTPInfo->Flags & HTTP_SSL_REWRITE) Proto=CopyStr(Proto,"https");
@@ -1116,6 +1116,11 @@ STREAM *HTTPSetupConnection(HTTPInfoStruct *Info, int ForceHTTPS)
     if (StrValid(Info->ConnectionChain)) Tempstr=FormatStr(Tempstr,"%s,%s:%s:%d/",Info->ConnectionChain,Proto,Host,Port);
     else Tempstr=FormatStr(Tempstr,"%s:%s:%d/",Proto,Host,Port);
 
+		ptr=strrchr(Tempstr, ',');
+		if (ptr) ptr++;
+		else ptr=Tempstr;
+
+ 		STREAMSetValue(S,"HTTP:URL",ptr);
     if (STREAMConnect(S,Tempstr,""))
     {
         S->Type=STREAM_TYPE_HTTP;
@@ -1144,12 +1149,12 @@ STREAM *HTTPConnect(HTTPInfoStruct *Info)
     STREAM *S=NULL;
 
     if (
-        (g_Flags & HTTP_REQ_HTTPS) ||
-        (g_Flags & HTTP_TRY_HTTPS)
+        (LU_HTTPFlags & HTTP_REQ_HTTPS) ||
+        (LU_HTTPFlags & HTTP_TRY_HTTPS)
     )
     {
         S=HTTPSetupConnection(Info, TRUE);
-        if (g_Flags & HTTP_REQ_HTTPS) return(S);
+        if (LU_HTTPFlags & HTTP_REQ_HTTPS) return(S);
     }
 
     if (!S) S=HTTPSetupConnection(Info, FALSE);
@@ -1197,7 +1202,6 @@ STREAM *HTTPTransact(HTTPInfoStruct *Info)
 
             HTTPReadHeaders(Info->S,Info);
             result=HTTPProcessResponse(Info);
-            STREAMSetValue(Info->S,"HTTP:URL",Info->Doc);
 
             if (Info->Flags & HTTP_CHUNKED) HTTPAddChunkedProcessor(Info->S);
 
@@ -1311,12 +1315,12 @@ int HTTPDownload(char *URL, STREAM *S)
 
 void HTTPSetFlags(int Flags)
 {
-    g_Flags=Flags;
+    LU_HTTPFlags=Flags;
 }
 
 int HTTPGetFlags()
 {
-    return(g_Flags);
+    return(LU_HTTPFlags);
 }
 
 

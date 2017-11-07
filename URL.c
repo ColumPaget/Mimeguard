@@ -96,12 +96,12 @@ int URLRegionCheck(const char *Config, const char *IP, char **RegionRegistrar, c
     char *Tempstr=NULL, *Token=NULL;
     int result=FALSE;
 
-    if (! (*RegionRegistrar))
-    {
-        Tempstr=RegionLookup(Tempstr, IP);
-        ptr=GetToken(Tempstr,":",RegionRegistrar,0);
-        ptr=GetToken(ptr,":",RegionCountry,0);
-    }
+		*RegionRegistrar=CopyStr(*RegionRegistrar, "");
+		*RegionCountry=CopyStr(*RegionCountry, "");
+
+    Tempstr=RegionLookup(Tempstr, IP);
+    ptr=GetToken(Tempstr,":",RegionRegistrar,0);
+    ptr=GetToken(ptr,":",RegionCountry,0);
 
     ptr=GetToken(Config, ",", &Token, 0);
     while (ptr)
@@ -143,6 +143,7 @@ int URLRuleCheck(TMimeItem *Item, const char *URL)
 			ptr=LookupHostIP(Host);
 			if (StrValid(ptr)) SetDetailVar(g_KeyValueStore, Host, ptr, KV_IP, time(NULL) + 5);
 		}
+
 		IP=CopyStr(IP, ptr);
 
     if (g_Flags & FLAG_DEBUG) printf("URL: %s %s\n",IP, URL);

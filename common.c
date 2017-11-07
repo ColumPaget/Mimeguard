@@ -2,7 +2,7 @@
 #include "Mime.h"
 #include <glob.h>
 
-int Flags=0;
+int g_Flags=0;
 char *ExportPath=NULL;
 
 //nothing to see here, move along
@@ -15,15 +15,17 @@ ListNode *g_KeyValueStore=NULL;
 char *DecodeMailText(char *RetStr, const char *Text)
 {
     const char *sptr, *eptr;
+		char *wptr;
 
     sptr=Text;
     if (*sptr=='"') sptr++;
     while (isspace(*sptr)) sptr++;
-    if (strncmp(sptr, "=?UTF-8?B?", 10)==0)
+    if (strncasecmp(sptr, "=?UTF-8?B?", 10)==0)
     {
         sptr+=10;
         eptr=strchr(sptr,'?');
         if (eptr) DecodeBytes(&RetStr, sptr, ENCODE_BASE64);
+				for (wptr=RetStr; *wptr !='\0'; wptr++) if ((*wptr < 32) || (*wptr > 126)) *wptr='?';
     }
     else RetStr=CopyStr(RetStr, Text);
 

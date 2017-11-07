@@ -279,6 +279,7 @@ void MimeReadMultipart(STREAM *S, TMimeItem *Outer)
     Item=MimeReadHeaders(S);
     while (Item)
     {
+				if (StrEnd(Item->ContentType) && StrEnd(Item->FileName)) Item->ContentType=CopyStr(Item->ContentType,"text/plain");
         ListAddItem(Outer->SubItems, Item);
 
         Doc=MimeReadDocument(S, Item, Outer->Boundary, &Tempstr);
