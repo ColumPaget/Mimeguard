@@ -129,8 +129,8 @@ void OutputItem(TMimeItem *Top, TMimeItem *Item, int Level, int Safe)
         if (Level==0) printf("\n");
     }
 
-    DestroyString(Prefix);
-    DestroyString(Additional);
+    Destroy(Prefix);
+    Destroy(Additional);
 }
 
 

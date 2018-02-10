@@ -54,9 +54,9 @@ void URLParseRule(const char *Rule)
 
     URLRuleAdd(Type, Argument);
 
-    DestroyString(Argument);
-    DestroyString(Token);
-    DestroyString(Match);
+    Destroy(Argument);
+    Destroy(Token);
+    Destroy(Match);
 }
 
 
@@ -75,16 +75,16 @@ int InFileList(const char *Path, const char *Item)
         ptr=GetToken(Tempstr, "\\S", &Token, 0);
         if (strcmp(Token, Item)==0)
         {
-            DestroyString(Tempstr);
-            DestroyString(Token);
+            Destroy(Tempstr);
+            Destroy(Token);
             return(TRUE);
         }
         Tempstr=STREAMReadLine(Tempstr, S);
     }
     STREAMClose(S);
 
-    DestroyString(Tempstr);
-    DestroyString(Token);
+    Destroy(Tempstr);
+    Destroy(Token);
 
     return(FALSE);
 }
@@ -117,8 +117,8 @@ int URLRegionCheck(const char *Config, const char *IP, char **RegionRegistrar, c
         ptr=GetToken(ptr, ",", &Token, 0);
     }
 
-    DestroyString(Tempstr);
-    DestroyString(Token);
+    Destroy(Tempstr);
+    Destroy(Token);
 
     return(result);
 }
@@ -134,6 +134,7 @@ int URLRuleCheck(TMimeItem *Item, const char *URL)
 		const char *ptr;
     int result=FALSE;
 
+		if (ListSize(URLRules)==0) return(FALSE);
     ParseURL(URL, &Proto, &Host, &PortStr, NULL, NULL, &Doc, NULL);
 		if (StrValid(Host))
 		{
@@ -230,14 +231,14 @@ int URLRuleCheck(TMimeItem *Item, const char *URL)
     }
 		}
 
-    DestroyString(RegionRegistrar);
-    DestroyString(RegionCountry);
-    DestroyString(Tempstr);
-    DestroyString(PortStr);
-    DestroyString(Proto);
-    DestroyString(Host);
-    DestroyString(Doc);
-    DestroyString(IP);
+    Destroy(RegionRegistrar);
+    Destroy(RegionCountry);
+    Destroy(Tempstr);
+    Destroy(PortStr);
+    Destroy(Proto);
+    Destroy(Host);
+    Destroy(Doc);
+    Destroy(IP);
 
 
     return(result);

@@ -14,8 +14,8 @@ void FileExtensionsAdd(const char *Extn, const char *MimeType)
         ptr=GetToken(ptr,"\\S",&Token,0);
     }
 
-    DestroyString(Tempstr);
-    DestroyString(Token);
+    Destroy(Tempstr);
+    Destroy(Token);
 }
 
 
@@ -45,8 +45,8 @@ void FileExtensionsLoadFile(const char *Path)
         STREAMClose(S);
     }
 
-    DestroyString(Tempstr);
-    DestroyString(MimeType);
+    Destroy(Tempstr);
+    Destroy(MimeType);
 }
 
 
@@ -65,8 +65,8 @@ const char *ptr;
 		ptr=GetToken(ptr,",",&Token, GETTOKEN_QUOTES);
 		}
 
-DestroyString(Tempstr);
-DestroyString(Token);
+Destroy(Tempstr);
+Destroy(Token);
 }
 
 

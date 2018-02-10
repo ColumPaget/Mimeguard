@@ -60,7 +60,6 @@ int RTFProcessCommands(STREAM *S, TMimeItem *Item)
 
                 if (DocumentStringsCheck(RTFStrings, UnQuote)==RULE_EVIL)
                 {
-                    printf("Illegal string: %s\n",UnQuote);
                     RetVal=RULE_EVIL;
                     SetTypedVar(Item->Errors, UnQuote, "",ERROR_STRING);
                 }
@@ -78,12 +77,12 @@ int RTFProcessCommands(STREAM *S, TMimeItem *Item)
         Tempstr=STREAMReadLine(Tempstr,S);
     }
 
-    DestroyString(Tempstr);
-    DestroyString(UnQuote);
-    DestroyString(Token);
-    DestroyString(P1Token);
-    DestroyString(P2Token);
-    DestroyString(SubType);
+    Destroy(Tempstr);
+    Destroy(UnQuote);
+    Destroy(Token);
+    Destroy(P1Token);
+    Destroy(P2Token);
+    Destroy(SubType);
 
     return(RetVal);
 }
@@ -108,7 +107,7 @@ STREAM *RTFOpen(const char *Path, TMimeItem *Item)
         }
     }
 
-    DestroyString(Tempstr);
+    Destroy(Tempstr);
     return(S);
 }
 
@@ -128,7 +127,7 @@ int RTFFileProcess(const char *Path, TMimeItem *Item)
         STREAMClose(S);
     }
 
-    DestroyString(Tempstr);
+    Destroy(Tempstr);
     return(RetVal);
 }
 

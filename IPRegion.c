@@ -62,12 +62,12 @@ char *RegionFileLookup(char *RetStr, const char *Path, const char *IPStr)
         STREAMClose(S);
     }
 
-    DestroyString(Registrar);
-    DestroyString(Tempstr);
-    DestroyString(Country);
-    DestroyString(Subnet);
-    DestroyString(Token);
-    DestroyString(Type);
+    Destroy(Registrar);
+    Destroy(Tempstr);
+    Destroy(Country);
+    Destroy(Subnet);
+    Destroy(Token);
+    Destroy(Type);
 
     return(RetStr);
 }
@@ -106,7 +106,7 @@ char *RegionLookup(char *RetStr, const char *IP)
         ptr=GetToken(ptr,",",&Path,0);
     }
 
-    DestroyString(Path);
+    Destroy(Path);
 
 		if (g_Flags & FLAG_DEBUG) printf("IPREGION: %s %s\n",IP, RetStr);
     return(RetStr);

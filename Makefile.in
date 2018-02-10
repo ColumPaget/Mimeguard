@@ -1,10 +1,10 @@
-FLAGS=
+FLAGS=@CFLAGS@ @DEFS@
 LIBS=-lm @LIBS@
 prefix=@prefix@
 sysconfdir=@sysconfdir@
 bindir=@bindir@
 
-OBJ=common.o DocumentTypes.o Mime.o FileMagics.o FileExtensions.o FileTypeRules.o Export.o DocumentStrings.o ConfigFile.o Output.o Zip.o PDF.o RTF.o OLE.o HTML.o URL.o IPRegion.o libUseful-2.8/libUseful-2.8.a
+OBJ=common.o DocumentTypes.o Mime.o FileMagics.o FileExtensions.o FileTypeRules.o Export.o DocumentStrings.o Settings.o Output.o Zip.o PDF.o RTF.o OLE.o HTML.o URL.o IPRegion.o Smtp.o libUseful-3/libUseful-3.a
 
 
 mimeguard: $(OBJ) main.c
@@ -52,8 +52,11 @@ IPRegion.o: IPRegion.h IPRegion.c
 Export.o: Export.h Export.c
 	gcc $(FLAGS) -c Export.c
 
-ConfigFile.o: ConfigFile.h ConfigFile.c
-	gcc $(FLAGS) -c ConfigFile.c
+Smtp.o: Smtp.h Smtp.c
+	gcc $(FLAGS) -c Smtp.c
+
+Settings.o: Settings.h Settings.c
+	gcc $(FLAGS) -c Settings.c
 
 Output.o: Output.h Output.c
 	gcc $(FLAGS) -c Output.c
@@ -61,8 +64,8 @@ Output.o: Output.h Output.c
 common.o: common.h common.c
 	gcc $(FLAGS) -c common.c
 
-libUseful-2.8/libUseful-2.8.a: 
-	$(MAKE) -C libUseful-2.8
+libUseful-3/libUseful-3.a: 
+	$(MAKE) -C libUseful-3
 
 clean:
 	@rm -f *.o */*.o */*.a */*.so mimeguard

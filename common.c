@@ -64,7 +64,7 @@ char *DecodeQuotedPrintable(char *Data, const char *Line)
         }
     }
 
-    DestroyString(Token);
+    Destroy(Token);
 
     return(Data);
 }
@@ -136,8 +136,8 @@ char *FileListExpand(char *RetStr, const char *FilesList)
         ptr=GetToken(ptr, ",",&Token,GETTOKEN_QUOTES);
     }
 
-    DestroyString(Token);
-    DestroyString(Proto);
+    Destroy(Token);
+    Destroy(Proto);
 
 	return(RetStr);
 }

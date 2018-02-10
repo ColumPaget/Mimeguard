@@ -9,6 +9,7 @@ const char *ptr;
 STREAM *S;
 
 RetStr=CopyStr(RetStr, URL);
+return(RetStr);
 
 //get past 'http://'. Then if there's no '/' ending the URL then add one
 ptr=strchr(RetStr, ':');
@@ -56,9 +57,9 @@ int HTMLTagWithURL(TMimeItem *Item, const char *TagData)
         ptr=GetNameValuePair(ptr, "\\S", "=", &Name, &Value);
     }
 
-    DestroyString(Name);
-    DestroyString(Value);
-    DestroyString(Tempstr);
+    Destroy(Name);
+    Destroy(Value);
+    Destroy(Tempstr);
 }
 
 
@@ -107,10 +108,10 @@ int HTMLProcess(STREAM *S, TMimeItem *Item)
     }
 
 
-    DestroyString(Tempstr);
-    DestroyString(TagName);
-    DestroyString(TagData);
-    DestroyString(Line);
+    Destroy(Tempstr);
+    Destroy(TagName);
+    Destroy(TagData);
+    Destroy(Line);
 
     return(Item->RulesResult);
 }
@@ -132,7 +133,7 @@ int HTMLFileProcess(const char *Path, TMimeItem *Item)
         RetVal=HTMLProcess(S, Item);
     }
 
-    DestroyString(Tempstr);
+    Destroy(Tempstr);
 
     return(RetVal);
 }

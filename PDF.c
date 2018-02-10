@@ -54,8 +54,8 @@ int PDFProcessToken(const char *PrevToken, const char *Token, ListNode *PDFStrin
         if (g_Flags & FLAG_DEBUG) printf("Illegal String: %s\n",UnQuote);
     }
 
-    DestroyString(UnQuote);
-    DestroyString(HexStr);
+    Destroy(UnQuote);
+    Destroy(HexStr);
 
     return(RetVal);
 }
@@ -85,9 +85,9 @@ int PDFProcessSubType(TMimeItem *Item, const char *Data)
 //else SubType=PDFProcessToken(SubType, "", Token);
 
 
-    DestroyString(SubType);
-    DestroyString(Token);
-    DestroyString(Token2);
+    Destroy(SubType);
+    Destroy(Token);
+    Destroy(Token2);
 
     return(FALSE);
 }
@@ -111,9 +111,9 @@ int PDFProcessStream(STREAM *S, ListNode *PDFStrings, ListNode *FoundStrings)
             if (PDFProcessChunk(S, Decompressed, PDFStrings, FoundStrings)==RULE_EVIL) RetVal=RULE_EVIL;
             if (PDFProcessChunk(S, Tempstr+10, PDFStrings, FoundStrings)==RULE_EVIL) RetVal=RULE_EVIL;
 
-            DestroyString(Decompressed);
-            DestroyString(Compressed);
-            DestroyString(Tempstr);
+            Destroy(Decompressed);
+            Destroy(Compressed);
+            Destroy(Tempstr);
 
             return(RetVal);
         }
@@ -125,9 +125,9 @@ int PDFProcessStream(STREAM *S, ListNode *PDFStrings, ListNode *FoundStrings)
         len=STREAMReadBytesToTerm(S, Tempstr,BUFSIZ,'\n');
     }
 
-    DestroyString(Decompressed);
-    DestroyString(Compressed);
-    DestroyString(Tempstr);
+    Destroy(Decompressed);
+    Destroy(Compressed);
+    Destroy(Tempstr);
     return(RetVal);
 }
 
@@ -170,9 +170,9 @@ int PDFProcessChunk(STREAM *S, const char *Chunk, ListNode *PDFStrings, ListNode
         ptr=GetToken(ptr, PDF_SEPARATORS, &Token, GETTOKEN_MULTI_SEPARATORS | GETTOKEN_INCLUDE_SEP);
     }
 
-    DestroyString(Token);
-    DestroyString(P1Token);
-    DestroyString(P2Token);
+    Destroy(Token);
+    Destroy(P1Token);
+    Destroy(P2Token);
 
     return(RetVal);
 }
@@ -197,7 +197,7 @@ int PDFProcessCommands(STREAM *S, TMimeItem *Item)
         len=STREAMReadBytesToTerm(S, Tempstr,BUFSIZ,'\n');
     }
 
-    DestroyString(Tempstr);
+    Destroy(Tempstr);
 
     return(RetVal);
 }
@@ -219,7 +219,7 @@ int PDFFileProcess(const char *Path, TMimeItem *Item)
         if (result & RULE_EVIL) Item->RulesResult=result | RULE_MACROS;
     }
 
-    DestroyString(Tempstr);
+    Destroy(Tempstr);
     STREAMClose(S);
 
     return(Item->RulesResult);

@@ -54,7 +54,7 @@ void FileMagicsConvertString(TFileMagics *Magic, const char *String)
         else Magic->Match=AddCharToBuffer(Magic->Match, Magic->MatchLen++, *ptr);
     }
 
-    DestroyString(Token);
+    Destroy(Token);
 }
 
 
@@ -85,8 +85,8 @@ void FileMagicsParse(const char *Data)
         FileMagicsAdd(Token, ContentType);
     }
 
-    DestroyString(ContentType);
-    DestroyString(Token);
+    Destroy(ContentType);
+    Destroy(Token);
 }
 
 
@@ -113,8 +113,8 @@ void FileMagicsLoadFile(const char *Path)
         }
     }
 
-    DestroyString(Tempstr);
-    DestroyString(Token);
+    Destroy(Tempstr);
+    Destroy(Token);
 }
 
 
@@ -134,8 +134,8 @@ const char *ptr;
     ptr=GetToken(ptr,",",&Token, GETTOKEN_QUOTES);
     }
 
-DestroyString(Tempstr);
-DestroyString(Token);
+Destroy(Tempstr);
+Destroy(Token);
 }
 
 

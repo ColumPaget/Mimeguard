@@ -15,6 +15,41 @@ typedef struct
 ListNode *Rules=NULL;
 ListNode *HeaderRules=NULL;
 
+
+/*
+typedef struct
+{
+int Flags;
+char *FileName;
+char *ContentType;
+char *FileMagicsType;
+char *ExtnType;
+char *Disposition;
+char *Boundary;
+int RulesResult;
+ListNode *Headers;
+ListNode *SubItems;
+ListNode *Errors;
+} TMimeItem;
+*/
+
+void ListSubItems(TMimeItem *Item)
+{
+ListNode *Curr;
+TMimeItem *SubItem;
+
+Curr=ListGetNext(Item->SubItems);
+while (Curr)
+{
+SubItem=(TMimeItem *) Curr->Item;
+printf("LSI: %s %d %d\n",SubItem->FileName, SubItem, SubItem->RulesResult);
+Curr=ListGetNext(Curr);
+}
+
+
+}
+
+
 void FileRulesAdd(const char *MimeType, int Flags, const char *Contains, const char *Equivalent)
 {
     ListNode *Node, *Head;
@@ -83,10 +118,10 @@ void FileTypeRuleParse(const char *Data, int Flags)
 
     FileRulesAdd(Match, Flags, Contains, Equiv);
 
-    DestroyString(Token);
-    DestroyString(Equiv);
-    DestroyString(Contains);
-    DestroyString(Match);
+    Destroy(Token);
+    Destroy(Equiv);
+    Destroy(Contains);
+    Destroy(Match);
 }
 
 
@@ -105,8 +140,8 @@ void FileExtnRuleParse(const char *Data)
         ptr=GetToken(ptr,"\\S",&Extn,GETTOKEN_QUOTES);
     }
 
-    DestroyString(ContentType);
-    DestroyString(Extn);
+    Destroy(ContentType);
+    Destroy(Extn);
 }
 
 
@@ -186,7 +221,7 @@ int IsEquivalentMimeType(TFileRule *Rule, const char *MimeType)
         ptr=GetToken(ptr,",",&Token,0);
     }
 
-    DestroyString(Token);
+    Destroy(Token);
 
     return(result);
 }
@@ -212,15 +247,16 @@ int ProcessContainedItem(const char *Contains, TMimeItem *Item)
 						{
 								result=RULE_EVIL | RULE_CONTAINER;
 								if (g_Flags & FLAG_DEBUG) printf("EVIL: %s %s not allowed in container\n",Item->FileName,Item->ContentType);
+								Item->RulesResult |= RULE_CONTAINER;
 						}
             else if (result==RULE_NONE) result=RULE_SAFE;
         }
         ptr=GetToken(ptr,",",&Token,0);
     }
 
-    if (result != RULE_SAFE) Item->RulesResult=RULE_CONTAINER;
+    //if (result != RULE_SAFE) Item->RulesResult |= RULE_CONTAINER;
 
-    DestroyString(Token);
+    Destroy(Token);
     return(result);
 }
 
@@ -249,6 +285,7 @@ int FileRulesProcessRule(TFileRule *Rule, TMimeItem *Item)
     int ContentMatches=FALSE, FileMagicsMatches=FALSE, ExtnMatches=FALSE;
     int result;
     const char *ptr;
+
 
     if (Rule->Flags & RULE_FILENAME)
     {
@@ -419,7 +456,7 @@ void HeaderRulesConsider(TMimeItem *Item, const char *Header, const char *Value)
         Curr=ListGetNext(Curr);
     }
 
-    DestroyString(Token);
+    Destroy(Token);
 }
 
 

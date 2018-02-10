@@ -200,7 +200,7 @@ MiniSec=MiniSectList[MiniSec];
 }
 }
 
-DestroyString(Bytes);
+Destroy(Bytes);
 STREAMClose(OutS);
 }
 
@@ -224,7 +224,7 @@ while(Sec > -1)
 }
 }
 
-DestroyString(Bytes);
+Destroy(Bytes);
 STREAMClose(OutS);
 }
 */
@@ -271,8 +271,8 @@ void OLEProcessDirBlock(STREAM *S, int Sector, int Extract)
         ptr+=sizeof(TOLEDirectory);
     }
 
-    DestroyString(Tempstr);
-    DestroyString(Bytes);
+    Destroy(Tempstr);
+    Destroy(Bytes);
 }
 
 

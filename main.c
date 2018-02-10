@@ -8,11 +8,22 @@
 #include "FileMagics.h"
 #include "Output.h"
 //#include "Rewrite.h"
-#include "ConfigFile.h"
+#include "Settings.h"
 #include "DocumentTypes.h"
+#include "Smtp.h"
 
 #define VERSION "2.3"
 char *ConfigPath=NULL;
+
+
+void PrintVersion()
+{
+    printf("mimeguard version %s\n",VERSION);
+    printf("default config file: %s/mimeguard.conf\n",SYSCONFDIR);
+    exit(0);
+}
+
+
 
 void PrintUsage()
 {
@@ -37,13 +48,6 @@ void PrintUsage()
     exit(0);
 }
 
-
-void PrintVersion()
-{
-    printf("mimeguard version %s\n",VERSION);
-    printf("default config file: %s/mimeguard.conf\n",SYSCONFDIR);
-    exit(0);
-}
 
 void ParseCommandLine(int argc, char *argv[])
 {
@@ -88,6 +92,11 @@ void ParseCommandLine(int argc, char *argv[])
             FileRulesAdd(Tempstr, RULE_HEADER, "*", "show");
             strcpy(argv[i], "");
         }
+				else if (strcmp(argv[i],"-smtp")==0)
+				{
+            g_Flags |= FLAG_SMTP;
+            strcpy(argv[i], "");
+				}
         else if (
             (strcmp(argv[i],"--help")==0) ||
             (strcmp(argv[i],"-help")==0) ||
@@ -102,7 +111,7 @@ void ParseCommandLine(int argc, char *argv[])
 
     }
 
-    DestroyString(Tempstr);
+    Destroy(Tempstr);
 }
 
 
@@ -116,7 +125,7 @@ char *FileType(char *RetStr, STREAM *S)
 
     RetStr=CopyStr(RetStr, FileMagicsLookupContentType(Tempstr));
 
-    DestroyString(Tempstr);
+    Destroy(Tempstr);
 
     return(RetStr);
 }
@@ -161,45 +170,22 @@ int ProcessFile(const char *Path)
         }
     }
 
-    DestroyString(ExtnType);
-    DestroyString(FileMagicsType);
-    DestroyString(Tempstr);
+    Destroy(ExtnType);
+    Destroy(FileMagicsType);
+    Destroy(Tempstr);
 
 
     return(ExitVal);
 }
 
 
-#define KV_SIZE 100
 
-
-int main(int argc, char *argv[])
-{
-    int ExitVal=RULE_NONE, i;
-    int DocCount=0, Safe=0, Evil=0, Malformed=0;
-		ListNode *Node;
-    struct stat Stat;
-
-    g_Flags = FLAG_SHOW_SAFE | FLAG_SHOW_EVIL | FLAG_SHOW_CURR;
-		g_KeyValueStore=MapCreate(KV_SIZE,LIST_FLAG_CACHE);
-    FileMagicsLoadDefaults();
-    FileExtensionsLoadDefaults();
-
-#ifdef SYSCONFDIR
-    ConfigPath=MCopyStr(ConfigPath,SYSCONFDIR,"/mimeguard.conf",NULL);
-#endif
-
-    ParseCommandLine(argc, argv);
-    ConfigFileLoad(ConfigPath);
-
-/*
-		for (i=0; i < KV_SIZE; i++)
-		{
-			Node=MapGetNthChain(g_KeyValueStore, i);
-			printf("%d: %d\n",i,ListSize(Node));
-		}
-		exit(1);
-*/
+int ProcessDocuments(int argc, char *argv[])
+{	
+ListNode *Node;
+struct stat Stat;
+int DocCount=0, Safe=0, Evil=0, Malformed=0;
+int ExitVal=RULE_NONE, i;
 
     for (i=1; i < argc; i++)
     {
@@ -233,9 +219,35 @@ int main(int argc, char *argv[])
     }
 
     printf("%d Documents considered. %d safe %d evil %d malformed\n",DocCount, Safe, Evil, Malformed);
+if (Evil > 0) ExitVal=RULE_EVIL;
 
-    if (Evil > 0) exit(1);
-    if (ExitVal & RULE_SAFE) exit(0);
-    if (ExitVal==RULE_NONE) exit(2);
-    exit(3);
+return(ExitVal);
+}
+
+#define KV_SIZE 100
+
+
+int main(int argc, char *argv[])
+{
+int ExitVal=RULE_NONE;
+
+g_Flags = FLAG_SHOW_SAFE | FLAG_SHOW_EVIL | FLAG_SHOW_CURR;
+g_KeyValueStore=MapCreate(KV_SIZE,LIST_FLAG_CACHE);
+FileMagicsLoadDefaults();
+FileExtensionsLoadDefaults();
+
+#ifdef SYSCONFDIR
+    ConfigPath=MCopyStr(ConfigPath,SYSCONFDIR,"/mimeguard.conf",NULL);
+#endif
+
+ParseCommandLine(argc, argv);
+ConfigFileLoad(ConfigPath);
+
+if (g_Flags & FLAG_SMTP) ExitVal=SmtpServer("tcp:127.0.0.1:25");
+else ExitVal=ProcessDocuments(argc, argv);
+
+if (ExitVal & RULE_EVIL) exit(1);
+if (ExitVal & RULE_SAFE) exit(0);
+if (ExitVal==RULE_NONE) exit(2);
+exit(3);
 }

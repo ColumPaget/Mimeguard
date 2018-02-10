@@ -26,6 +26,8 @@ TMimeItem *MimeItemCreate(const char *FileName, const char *ContentType, const c
 		{
 			ptr=strrchr(FileName, '.');
 			if (ptr) Item->ExtnType=CopyStr(Item->ExtnType, FileExtensionLookup(ptr));
+
+			if (StrEnd(Item->ContentType)) Item->ContentType=CopyStr(Item->ContentType, Item->ExtnType);
 		}
 
     return(Item);
@@ -37,13 +39,13 @@ void MimeItemDestroy(void *pItem)
 
     if (! pItem) return;
     Item=(TMimeItem *) pItem;
-    DestroyString(Item->ContentType);
-    DestroyString(Item->FileMagicsType);
-    DestroyString(Item->ExtnType);
-    DestroyString(Item->FileName);
+    Destroy(Item->ContentType);
+    Destroy(Item->FileMagicsType);
+    Destroy(Item->ExtnType);
+    Destroy(Item->FileName);
     ListDestroy(Item->SubItems, MimeItemDestroy);
-    ListDestroy(Item->Headers, DestroyString);
-    ListDestroy(Item->Errors, DestroyString);
+    ListDestroy(Item->Headers, Destroy);
+    ListDestroy(Item->Errors, Destroy);
     free(Item);
 }
 
@@ -65,7 +67,7 @@ char *MimeHeaderReadLine(char *RetStr, STREAM *S)
         StripTrailingWhitespace(RetStr);
     }
 
-    DestroyString(Tempstr);
+    Destroy(Tempstr);
     return(RetStr);
 }
 
@@ -118,7 +120,7 @@ void MimeParseContentType(const char *Data, TMimeItem *Item)
     }
     while (ptr);
 
-    DestroyString(Token);
+    Destroy(Token);
 }
 
 
@@ -127,7 +129,7 @@ void MimeParseContentType(const char *Data, TMimeItem *Item)
 void MimeParseContentDisposition(const char *Data, TMimeItem *Item)
 {
     char *Token=NULL, *Tempstr=NULL;
-    const char *ptr;
+    const char *ptr, *tptr;
 
     ptr=GetToken(Data, ";", &Item->Disposition, GETTOKEN_QUOTES);
     do
@@ -143,13 +145,16 @@ void MimeParseContentDisposition(const char *Data, TMimeItem *Item)
             {
                 Item->FileName=DecodeMailText(Item->FileName, Token + 9);
                 StripQuotes(Item->FileName);
+
+								tptr=strrchr(Item->FileName, '.');
+								if (tptr) Item->ExtnType=CopyStr(Item->ExtnType, FileExtensionLookup(tptr));
             }
             break;
         }
     }
     while (ptr);
 
-    DestroyString(Token);
+    Destroy(Token);
 }
 
 
@@ -207,15 +212,9 @@ TMimeItem *MimeReadHeaders(STREAM *S)
         Tempstr=MimeHeaderReadLine(Tempstr, S);
     }
 
-    if (StrValid(Item->FileName))
-    {
-        ptr=strrchr(Item->FileName, '.');
-        Item->ExtnType=CopyStr(Item->ExtnType, FileExtensionLookup(ptr));
-    }
-
-    DestroyString(Tempstr);
-    DestroyString(Name);
-    DestroyString(Value);
+    Destroy(Tempstr);
+    Destroy(Name);
+    Destroy(Value);
 
     return(Item);
 }
@@ -261,8 +260,8 @@ STREAM *MimeReadDocument(STREAM *S, TMimeItem *Item, const char *Boundary, char 
         STREAMSeek(Doc,0,SEEK_SET);
     }
 
-    DestroyString(Tempstr);
-    DestroyString(Data);
+    Destroy(Tempstr);
+    Destroy(Data);
 
     return(Doc);
 }
@@ -289,7 +288,7 @@ void MimeReadMultipart(STREAM *S, TMimeItem *Outer)
         STREAMClose(Doc);
         Item=MimeReadHeaders(S);
     }
-    DestroyString(Tempstr);
+    Destroy(Tempstr);
 }
 
 
@@ -305,8 +304,8 @@ void MimeFileFileMagics(STREAM *S, TMimeItem *Item)
 
     Item->FileMagicsType=CopyStr(Item->FileMagicsType, FileMagicsLookupContentType(Data));
 
-    DestroyString(Tempstr);
-    DestroyString(Data);
+    Destroy(Tempstr);
+    Destroy(Data);
 }
 
 

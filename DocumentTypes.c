@@ -26,6 +26,8 @@ int DocTypeMatch(TMimeItem *Item, const char *MatchType)
     return(FALSE);
 }
 
+
+
 int DocTypeProcess(STREAM *Doc, TMimeItem *Item, const char *Path)
 {
     int RetVal=RULE_NONE;
@@ -37,9 +39,9 @@ int DocTypeProcess(STREAM *Doc, TMimeItem *Item, const char *Path)
     TmpPath=CopyStr(TmpPath, Path);
 
     //if the root document is not a multipart mail then we'll have to export it first
-    if ((Item->Flags & MIMEFLAG_ROOT) && (strncmp(Item->ContentType, "multipart/",10) != 0))
+    if (Item->Flags & MIMEFLAG_ROOT) 
     {
-        Doc=MimeReadDocument(Doc, Item, "", &TmpPath);
+			if (StrEnd(Item->ContentType)) Doc=MimeReadDocument(Doc, Item, "", &TmpPath);
     }
 
 
@@ -76,7 +78,7 @@ int DocTypeProcess(STREAM *Doc, TMimeItem *Item, const char *Path)
 
     FileRulesConsider(Item);
 
-    DestroyString(TmpPath);
+    Destroy(TmpPath);
 
     return(RetVal);
 }
