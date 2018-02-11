@@ -4,7 +4,7 @@
 void DocumentStringsAdd(const char *DocType, const char *String, int Flags)
 {
     ListNode *Node, *Items;
-		int Type;
+    int Type;
 
     if (Flags & RULE_OVERRIDE) KV_DOCSTRINGS_OVERRIDE;
     else Type=KV_DOCSTRINGS;

@@ -3,14 +3,16 @@
 void FileExtensionsAdd(const char *Extn, const char *MimeType)
 {
     char *Tempstr=NULL, *Token=NULL;
-		const char *ptr;
+    const char *ptr, *tptr;;
 
     Tempstr=CopyStr(Tempstr,Extn);
     strlwr(Tempstr);
     ptr=GetToken(Tempstr,"\\S",&Token,0);
     while (ptr)
     {
-        SetTypedVar(g_KeyValueStore, Token, MimeType, KV_FILE_EXTN);
+        tptr=Token;
+        while ((*tptr=='.') || isspace(*tptr)) tptr++;
+        SetTypedVar(g_KeyValueStore, tptr, MimeType, KV_FILE_EXTN);
         ptr=GetToken(ptr,"\\S",&Token,0);
     }
 
@@ -23,7 +25,7 @@ void FileExtensionsLoadFile(const char *Path)
 {
     STREAM *S;
     char *Tempstr=NULL, *MimeType=NULL;
-		const char *ptr;
+    const char *ptr;
 
     S=STREAMOpen(Path, "r");
     if (S)
@@ -52,21 +54,21 @@ void FileExtensionsLoadFile(const char *Path)
 
 void FileExtensionsLoad(const char *Path)
 {
-char *Tempstr=NULL, *Token=NULL;
-const char *ptr;
+    char *Tempstr=NULL, *Token=NULL;
+    const char *ptr;
 
-		Tempstr=FileListExpand(Tempstr, Path);
-		ptr=GetToken(Tempstr,",",&Token, GETTOKEN_QUOTES);
-		while (ptr)
-		{
-			StripTrailingWhitespace(Token);
-			StripLeadingWhitespace(Token);
-			FileExtensionsLoadFile(Token);
-		ptr=GetToken(ptr,",",&Token, GETTOKEN_QUOTES);
-		}
+    Tempstr=FileListExpand(Tempstr, Path);
+    ptr=GetToken(Tempstr,",",&Token, GETTOKEN_QUOTES);
+    while (ptr)
+    {
+        StripTrailingWhitespace(Token);
+        StripLeadingWhitespace(Token);
+        FileExtensionsLoadFile(Token);
+        ptr=GetToken(ptr,",",&Token, GETTOKEN_QUOTES);
+    }
 
-Destroy(Tempstr);
-Destroy(Token);
+    Destroy(Tempstr);
+    Destroy(Token);
 }
 
 
@@ -107,6 +109,8 @@ void FileExtensionsLoadDefaults()
     FileExtensionsAdd("docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     FileExtensionsAdd("xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     FileExtensionsAdd("xppt", "application/vnd.openxmlformats-officedocument.presentationml.presentation");
+
+    FileExtensionsAdd("zip", "application/zip");
 
     FileExtensionsAdd("jpg jpeg", "image/jpeg");
     FileExtensionsAdd("gif", "image/gif");

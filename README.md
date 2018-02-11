@@ -46,9 +46,10 @@ Options are:
   -safe           Only show safe files
   -evil           Only show unsafe/evil files
   -show <email header> Show Email Header
+	-smtp           Run in SMTP proxy mode
 ```
 
-When run on a console mimeguard will print out a color-coded breakdown of files/mime-types, highlighting any that it considers safe/not safe. This allows easy testing of changes made to your configuration file.
+When run on a console mimeguard will print out a color-coded breakdown of files/mime-types, highlighting any that it considers safe/not safe. This allows easy testing of changes made to your configuration file. When run with the `-smtp` flag mimeguard will run as an SMTP server/proxy, allowing mails to be sent to it for analysis and sorting (see SMTP MODE below).
 
 
 # CONFIGURATION
@@ -218,6 +219,35 @@ RegionFiles /etc/ip-regions/*,/usr/local/etc/ip-regions/*
 ```
 
 Each entry in a path list can also have a 'protocol' prefix. Currently the protocol can only have the value 'mmap:'. If a path has an 'mmap' prefix then the file will be mapped into shared memory. This allows many applications using this file to share a copy of it in memory, granting them faster access as they don't need to load it from disk. However, for this to work some application has to keep the file permanently mapped into memory.
+
+
+# SMTP MODE
+
+Mimeguard can act as an SMTP server to receive mails for processing. This is activated by the '-smtp' command-line option. In this mode a number of extra config-file options become activated. 
+
+```
+SmtpPassDir - directory to put 'safe' mails into
+SmtpFailDir - directory to put 'evil' mails into
+SmtpPassServer - mailserver to send 'safe' mails to
+SmtpFailServer - mailserver to send 'evil' mails to
+SmtpFailRedirect - email address to send 'evil' mails to
+```
+
+SmtpPassDir and SmtpFailDir specify two directories that mail is sorted into, depending on whether it is considered 'safe' (pass) or 'evil' (fail). If no SmtpPassServer or SmtpFailServer is specified then these mails just sit in these directories, perhaps to be processed by some other program. However, if SmtpPassServer, and/or SmtpFailServer are specified, then the mails are sent to those servers (and deleted from the directories as they are sent). 
+
+Finally SmtpFailRedirect allows an email address to be specified that 'evil' mails will be sent to. An 'SmtpFailServer' still needs to be specified for this to work, but instead of mail being sent to the original recipient, it will be sent to the email address specified in this option. This allows using the same server for both pass and fail, but sending all failed (evil) mails to a specific email address.
+
+Smtp servers to send fail and pass mail to can be specified with any of the following forms:
+
+```
+<host>
+<host>:port
+<user>:<password>@host
+<user>:<password>@host:port
+```
+
+The `<user>` and `<password>` values here are credentials to be used on SMTP servers that require authentication.
+
 
 # MACROS
 

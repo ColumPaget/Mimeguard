@@ -10,8 +10,8 @@ ListNode *URLRules=NULL;
 
 void URLRuleAdd(int Type, const char *Arg)
 {
-if (! URLRules) URLRules=ListCreate();
-ListAddTypedItem(URLRules, Type, "", CopyStr(NULL, Arg));
+    if (! URLRules) URLRules=ListCreate();
+    ListAddTypedItem(URLRules, Type, "", CopyStr(NULL, Arg));
 }
 
 
@@ -96,8 +96,8 @@ int URLRegionCheck(const char *Config, const char *IP, char **RegionRegistrar, c
     char *Tempstr=NULL, *Token=NULL;
     int result=FALSE;
 
-		*RegionRegistrar=CopyStr(*RegionRegistrar, "");
-		*RegionCountry=CopyStr(*RegionCountry, "");
+    *RegionRegistrar=CopyStr(*RegionRegistrar, "");
+    *RegionCountry=CopyStr(*RegionCountry, "");
 
     Tempstr=RegionLookup(Tempstr, IP);
     ptr=GetToken(Tempstr,":",RegionRegistrar,0);
@@ -131,27 +131,27 @@ int URLRuleCheck(TMimeItem *Item, const char *URL)
     char *Proto=NULL, *Host=NULL, *PortStr=NULL, *Doc=NULL, *IP=NULL;
     char *RegionRegistrar=NULL, *RegionCountry=NULL;
     char *Tempstr=NULL;
-		const char *ptr;
+    const char *ptr;
     int result=FALSE;
 
-		if (ListSize(URLRules)==0) return(FALSE);
+    if (ListSize(URLRules)==0) return(FALSE);
     ParseURL(URL, &Proto, &Host, &PortStr, NULL, NULL, &Doc, NULL);
-		if (StrValid(Host))
-		{
-		ptr=GetTypedVar(g_KeyValueStore, Host, KV_IP);
-    if (! StrValid(ptr)) 
-		{
-			ptr=LookupHostIP(Host);
-			if (StrValid(ptr)) SetDetailVar(g_KeyValueStore, Host, ptr, KV_IP, time(NULL) + 5);
-		}
-
-		IP=CopyStr(IP, ptr);
-
-    if (g_Flags & FLAG_DEBUG) printf("URL: %s %s\n",IP, URL);
-
-    Curr=ListGetNext(URLRules);
-    while (Curr)
+    if (StrValid(Host))
     {
+        ptr=GetTypedVar(g_KeyValueStore, Host, KV_IP);
+        if (! StrValid(ptr))
+        {
+            ptr=LookupHostIP(Host);
+            if (StrValid(ptr)) SetDetailVar(g_KeyValueStore, Host, ptr, KV_IP, time(NULL) + 5);
+        }
+
+        IP=CopyStr(IP, ptr);
+
+        if (g_Flags & FLAG_DEBUG) printf("URL: %s %s\n",IP, URL);
+
+        Curr=ListGetNext(URLRules);
+        while (Curr)
+        {
             switch (Curr->ItemType)
             {
             case BLACKLIST_HOST:
@@ -220,16 +220,16 @@ int URLRuleCheck(TMimeItem *Item, const char *URL)
                 if (URLRegionCheck(Curr->Item, IP, &RegionRegistrar, &RegionCountry)) result=FALSE;
                 break;
             }
-        Curr=ListGetNext(Curr);
-    }
+            Curr=ListGetNext(Curr);
+        }
 
 
-    if (result)
-    {
-        Item->RulesResult &= ~RULE_SAFE;
-        Item->RulesResult |= RULE_EVIL | RULE_MACROS;
+        if (result)
+        {
+            Item->RulesResult &= ~RULE_SAFE;
+            Item->RulesResult |= RULE_EVIL | RULE_MACROS;
+        }
     }
-		}
 
     Destroy(RegionRegistrar);
     Destroy(RegionCountry);

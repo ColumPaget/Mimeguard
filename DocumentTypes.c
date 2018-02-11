@@ -39,9 +39,9 @@ int DocTypeProcess(STREAM *Doc, TMimeItem *Item, const char *Path)
     TmpPath=CopyStr(TmpPath, Path);
 
     //if the root document is not a multipart mail then we'll have to export it first
-    if (Item->Flags & MIMEFLAG_ROOT) 
+    if (Item->Flags & MIMEFLAG_ROOT)
     {
-			if (StrEnd(Item->ContentType)) Doc=MimeReadDocument(Doc, Item, "", &TmpPath);
+        if (StrEnd(Item->ContentType)) Doc=MimeReadDocument(Doc, Item, "", &TmpPath);
     }
 
 
@@ -69,9 +69,9 @@ int DocTypeProcess(STREAM *Doc, TMimeItem *Item, const char *Path)
         HTMLFileProcess(TmpPath, Item);
     }
     else if (
-							(DocTypeMatch(Item,"multipart/mixed")) ||
-    					(DocTypeMatch(Item,"multipart/related"))
-		)
+        (DocTypeMatch(Item,"multipart/mixed")) ||
+        (DocTypeMatch(Item,"multipart/related"))
+    )
     {
         MimeReadMultipart(Doc, Item);
     }

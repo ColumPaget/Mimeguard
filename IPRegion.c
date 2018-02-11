@@ -5,7 +5,7 @@ char *RegionFileList=NULL;
 
 void RegionSetFiles(const char *FilesList)
 {
-RegionFileList=FileListExpand(RegionFileList, FilesList);
+    RegionFileList=FileListExpand(RegionFileList, FilesList);
 }
 
 
@@ -16,7 +16,7 @@ char *RegionFileLookup(char *RetStr, const char *Path, const char *IPStr)
     int result=FALSE;
     uint32_t IP, Mask, val;
     STREAM *S;
-		
+
     IP=StrtoIP(IPStr);
     S=STREAMOpen(Path, "r");
     if (S)
@@ -78,7 +78,7 @@ char *RegionLookup(char *RetStr, const char *IP)
     char *Path=NULL;
     const char *ptr;
 
-		if (! StrValid(IP)) return(CopyStr(RetStr, ""));
+    if (! StrValid(IP)) return(CopyStr(RetStr, ""));
     if (strncmp(IP,"127.",4)==0) return(CopyStr(RetStr,"local"));
     if (strncmp(IP,"192.168.",8)==0) return(CopyStr(RetStr,"local"));
     if (strncmp(IP,"10.",3)==0) return(CopyStr(RetStr,"local"));
@@ -108,7 +108,7 @@ char *RegionLookup(char *RetStr, const char *IP)
 
     Destroy(Path);
 
-		if (g_Flags & FLAG_DEBUG) printf("IPREGION: %s %s\n",IP, RetStr);
+    if (g_Flags & FLAG_DEBUG) printf("IPREGION: %s %s\n",IP, RetStr);
     return(RetStr);
 }
 

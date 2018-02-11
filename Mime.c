@@ -13,7 +13,7 @@
 TMimeItem *MimeItemCreate(const char *FileName, const char *ContentType, const char *FileMagicsType)
 {
     TMimeItem *Item;
-		const char *ptr;
+    const char *ptr;
 
     Item=(TMimeItem *) calloc(1,sizeof(TMimeItem));
     Item->ContentType=CopyStr(Item->ContentType, ContentType);
@@ -23,12 +23,10 @@ TMimeItem *MimeItemCreate(const char *FileName, const char *ContentType, const c
     Item->SubItems=ListCreate();
     Item->Errors=ListCreate();
     if (StrValid(FileName))
-		{
-			ptr=strrchr(FileName, '.');
-			if (ptr) Item->ExtnType=CopyStr(Item->ExtnType, FileExtensionLookup(ptr));
-
-			if (StrEnd(Item->ContentType)) Item->ContentType=CopyStr(Item->ContentType, Item->ExtnType);
-		}
+    {
+        ptr=strrchr(FileName, '.');
+        if (ptr) Item->ExtnType=CopyStr(Item->ExtnType, FileExtensionLookup(ptr));
+    }
 
     return(Item);
 }
@@ -47,6 +45,18 @@ void MimeItemDestroy(void *pItem)
     ListDestroy(Item->Headers, Destroy);
     ListDestroy(Item->Errors, Destroy);
     free(Item);
+}
+
+
+char *MimeItemGetContentType(TMimeItem *Item)
+{
+    if ((! StrValid(Item->ContentType)) || (strcasecmp(Item->ContentType,"octet-stream")==0) || (strcasecmp(Item->ContentType,"application/octet-stream")==0) )
+    {
+        if (StrValid(Item->FileMagicsType)) return(Item->FileMagicsType);
+        if (StrValid(Item->ExtnType)) return(Item->ExtnType);
+    }
+
+    return(Item->ContentType);
 }
 
 
@@ -145,9 +155,6 @@ void MimeParseContentDisposition(const char *Data, TMimeItem *Item)
             {
                 Item->FileName=DecodeMailText(Item->FileName, Token + 9);
                 StripQuotes(Item->FileName);
-
-								tptr=strrchr(Item->FileName, '.');
-								if (tptr) Item->ExtnType=CopyStr(Item->ExtnType, FileExtensionLookup(tptr));
             }
             break;
         }
@@ -211,6 +218,10 @@ TMimeItem *MimeReadHeaders(STREAM *S)
 
         Tempstr=MimeHeaderReadLine(Tempstr, S);
     }
+
+    ptr=strrchr(Item->FileName, '.');
+    if (ptr) Item->ExtnType=CopyStr(Item->ExtnType, FileExtensionLookup(ptr));
+
 
     Destroy(Tempstr);
     Destroy(Name);
@@ -278,7 +289,7 @@ void MimeReadMultipart(STREAM *S, TMimeItem *Outer)
     Item=MimeReadHeaders(S);
     while (Item)
     {
-				if (StrEnd(Item->ContentType) && StrEnd(Item->FileName)) Item->ContentType=CopyStr(Item->ContentType,"text/plain");
+        if (StrEnd(Item->ContentType) && StrEnd(Item->FileName)) Item->ContentType=CopyStr(Item->ContentType,"text/plain");
         ListAddItem(Outer->SubItems, Item);
 
         Doc=MimeReadDocument(S, Item, Outer->Boundary, &Tempstr);

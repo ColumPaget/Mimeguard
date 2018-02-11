@@ -97,7 +97,7 @@ void FileMagicsLoadFile(const char *Path)
     const char *ptr;
     STREAM *S;
 
-		Tempstr=FileListExpand(Tempstr, Path);
+    Tempstr=FileListExpand(Tempstr, Path);
     S=STREAMOpen(Tempstr, "r");
     if (S)
     {
@@ -121,21 +121,21 @@ void FileMagicsLoadFile(const char *Path)
 
 void FileMagicsLoad(const char *Path)
 {
-char *Tempstr=NULL, *Token=NULL;
-const char *ptr;
+    char *Tempstr=NULL, *Token=NULL;
+    const char *ptr;
 
     Tempstr=FileListExpand(Tempstr, Path);
     ptr=GetToken(Tempstr,",",&Token, GETTOKEN_QUOTES);
     while (ptr)
     {
-      StripTrailingWhitespace(Token);
-      StripLeadingWhitespace(Token);
-      FileMagicsLoadFile(Token);
-    ptr=GetToken(ptr,",",&Token, GETTOKEN_QUOTES);
+        StripTrailingWhitespace(Token);
+        StripLeadingWhitespace(Token);
+        FileMagicsLoadFile(Token);
+        ptr=GetToken(ptr,",",&Token, GETTOKEN_QUOTES);
     }
 
-Destroy(Tempstr);
-Destroy(Token);
+    Destroy(Tempstr);
+    Destroy(Token);
 }
 
 

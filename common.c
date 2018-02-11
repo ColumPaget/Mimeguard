@@ -8,14 +8,14 @@ char *ExportPath=NULL;
 //nothing to see here, move along
 STREAM *g_Rewrite=NULL;
 
-//global policies map, into which we put anything that we need to 
+//global policies map, into which we put anything that we need to
 //look up by name
 ListNode *g_KeyValueStore=NULL;
 
 char *DecodeMailText(char *RetStr, const char *Text)
 {
     const char *sptr, *eptr;
-		char *wptr;
+    char *wptr;
 
     sptr=Text;
     if (*sptr=='"') sptr++;
@@ -25,7 +25,7 @@ char *DecodeMailText(char *RetStr, const char *Text)
         sptr+=10;
         eptr=strchr(sptr,'?');
         if (eptr) DecodeBytes(&RetStr, sptr, ENCODE_BASE64);
-				for (wptr=RetStr; *wptr !='\0'; wptr++) if ((*wptr < 32) || (*wptr > 126)) *wptr='?';
+        for (wptr=RetStr; *wptr !='\0'; wptr++) if ((*wptr < 32) || (*wptr > 126)) *wptr='?';
     }
     else RetStr=CopyStr(RetStr, Text);
 
@@ -139,5 +139,5 @@ char *FileListExpand(char *RetStr, const char *FilesList)
     Destroy(Token);
     Destroy(Proto);
 
-	return(RetStr);
+    return(RetStr);
 }

@@ -35,16 +35,16 @@ ListNode *Errors;
 
 void ListSubItems(TMimeItem *Item)
 {
-ListNode *Curr;
-TMimeItem *SubItem;
+    ListNode *Curr;
+    TMimeItem *SubItem;
 
-Curr=ListGetNext(Item->SubItems);
-while (Curr)
-{
-SubItem=(TMimeItem *) Curr->Item;
-printf("LSI: %s %d %d\n",SubItem->FileName, SubItem, SubItem->RulesResult);
-Curr=ListGetNext(Curr);
-}
+    Curr=ListGetNext(Item->SubItems);
+    while (Curr)
+    {
+        SubItem=(TMimeItem *) Curr->Item;
+        printf("LSI: %s %d %d\n",SubItem->FileName, SubItem, SubItem->RulesResult);
+        Curr=ListGetNext(Curr);
+    }
 
 
 }
@@ -62,8 +62,8 @@ void FileRulesAdd(const char *MimeType, int Flags, const char *Contains, const c
     Rule->Flags=Flags;
     Rule->ContentType=CopyStr(Rule->ContentType, MimeType);
     Rule->Equivalent=CopyStr(Rule->Equivalent, Equivalent);
-		//if (StrValid(Equivalent)) SetTypedVar(g_KeyValueStore, MimeType, Equivalent, KV_EQUIV_MIMETYPE);
-		
+    //if (StrValid(Equivalent)) SetTypedVar(g_KeyValueStore, MimeType, Equivalent, KV_EQUIV_MIMETYPE);
+
 
     if (Flags & RULE_CONTAINER)
     {
@@ -188,7 +188,7 @@ const char *TranslateMimeTypeEquivalent(const char *MimeType)
         return("");
     }
 
-		Rule=(TFileRule *) Node->Item;
+    Rule=(TFileRule *) Node->Item;
     if (g_Flags & FLAG_DEBUG) printf("TranslateMimeType: %s -> %s\n",MimeType, Rule->Equivalent);
 
     return((const char *) Rule->Equivalent);
@@ -201,18 +201,18 @@ int IsEquivalentMimeType(TFileRule *Rule, const char *MimeType)
     const char *ptr;
     int result=FALSE;
 
-    if (fnmatch(Rule->ContentType, MimeType, 0)==0) 
-		{
-			return(TRUE);
-		}
+    if (fnmatch(Rule->ContentType, MimeType, 0)==0)
+    {
+        return(TRUE);
+    }
 //    if (fnmatch(Rule->ContentType, TranslateMimeTypeEquivalent(MimeType), 0)==0) return(TRUE);
-		
+
 
     ptr=GetToken(Rule->Equivalent ,",",&Token,0);
     while (ptr)
     {
-				StripLeadingWhitespace(Token);
-				StripTrailingWhitespace(Token);
+        StripLeadingWhitespace(Token);
+        StripTrailingWhitespace(Token);
         if (StrValid(Token) && (fnmatch(Token, MimeType, 0)==0))
         {
             result=TRUE;
@@ -243,12 +243,12 @@ int ProcessContainedItem(const char *Contains, TMimeItem *Item)
 
         if (fnmatch(p_pattern,Item->ContentType,0)==0)
         {
-            if (*Token=='!') 
-						{
-								result=RULE_EVIL | RULE_CONTAINER;
-								if (g_Flags & FLAG_DEBUG) printf("EVIL: %s %s not allowed in container\n",Item->FileName,Item->ContentType);
-								Item->RulesResult |= RULE_CONTAINER;
-						}
+            if (*Token=='!')
+            {
+                result=RULE_EVIL | RULE_CONTAINER;
+                if (g_Flags & FLAG_DEBUG) printf("EVIL: %s %s not allowed in container\n",Item->FileName,Item->ContentType);
+                Item->RulesResult |= RULE_CONTAINER;
+            }
             else if (result==RULE_NONE) result=RULE_SAFE;
         }
         ptr=GetToken(ptr,",",&Token,0);
@@ -298,21 +298,21 @@ int FileRulesProcessRule(TFileRule *Rule, TMimeItem *Item)
         {
             FileMagicsMatches=IsEquivalentMimeType(Rule, Item->FileMagicsType);
             if (FileMagicsMatches && (Rule->Flags & RULE_EVIL))
-						{
-							if (g_Flags & FLAG_DEBUG) printf("EVIL: FileMagic %s %s\n",Item->FileName,Item->FileMagicsType);
-							return(RULE_EVIL);
-						}
+            {
+                if (g_Flags & FLAG_DEBUG) printf("EVIL: FileMagic %s %s\n",Item->FileName,Item->FileMagicsType);
+                return(RULE_EVIL);
+            }
         }
 
         if (StrValid(Item->ExtnType))
         {
             ExtnMatches=IsEquivalentMimeType(Rule, Item->ExtnType);
-						if (ExtnMatches && (g_Flags & FLAG_DEBUG)) printf("ExtnType %s %s matches rule for %s\n",Item->FileName,Item->ExtnType, Rule->ContentType);
-            if (ExtnMatches && (Rule->Flags & RULE_EVIL)) 
-						{
-							if (g_Flags & FLAG_DEBUG) printf("EVIL: ExtnType %s %s matches rule for %s\n",Item->FileName,Item->ExtnType, Rule->ContentType);
-							return(RULE_EVIL);
-						}
+            if (ExtnMatches && (g_Flags & FLAG_DEBUG)) printf("ExtnType %s %s matches rule for %s\n",Item->FileName,Item->ExtnType, Rule->ContentType);
+            if (ExtnMatches && (Rule->Flags & RULE_EVIL))
+            {
+                if (g_Flags & FLAG_DEBUG) printf("EVIL: ExtnType %s %s matches rule for %s\n",Item->FileName,Item->ExtnType, Rule->ContentType);
+                return(RULE_EVIL);
+            }
         }
 
         ContentMatches=IsEquivalentMimeType(Rule, Item->ContentType);
@@ -345,11 +345,11 @@ int FileRulesProcessRule(TFileRule *Rule, TMimeItem *Item)
         else if (! ContentMatches) return(RULE_MISMATCH);
         else
         {
-            if (Rule->Flags & RULE_EVIL) 
-						{
-							if (g_Flags & FLAG_DEBUG) printf("EVIL: ContentType %s %s matches %s\n",Item->FileName,Item->ContentType,Rule->ContentType);
-							return(RULE_EVIL);
-						}
+            if (Rule->Flags & RULE_EVIL)
+            {
+                if (g_Flags & FLAG_DEBUG) printf("EVIL: ContentType %s %s matches %s\n",Item->FileName,Item->ContentType,Rule->ContentType);
+                return(RULE_EVIL);
+            }
         }
 
         if ((Rule->Flags & RULE_BLANK_MAGIC) && (! StrValid(Item->FileMagicsType)))
@@ -373,11 +373,11 @@ int FileRulesProcessRule(TFileRule *Rule, TMimeItem *Item)
         //item is a container but is empty
         else if (Rule->Flags & RULE_CONTAINER)
         {
-          if (! (Rule->Flags & RULE_ALLOW_EMPTY)) 
-					{
-							if (g_Flags & FLAG_DEBUG) printf("EVIL: EmptyContainer %s %s\n",Item->FileName,Item->ContentType);
-							return(Item->RulesResult | RULE_EMPTY | RULE_EVIL);
-					}
+            if (! (Rule->Flags & RULE_ALLOW_EMPTY))
+            {
+                if (g_Flags & FLAG_DEBUG) printf("EVIL: EmptyContainer %s %s\n",Item->FileName,Item->ContentType);
+                return(Item->RulesResult | RULE_EMPTY | RULE_EVIL);
+            }
         }
     }
 
