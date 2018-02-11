@@ -226,16 +226,19 @@ Each entry in a path list can also have a 'protocol' prefix. Currently the proto
 Mimeguard can act as an SMTP server to receive mails for processing. This is activated by the '-smtp' command-line option. In this mode a number of extra config-file options become activated. 
 
 ```
-SmtpPassDir - directory to put 'safe' mails into
-SmtpFailDir - directory to put 'evil' mails into
-SmtpPassServer - mailserver to send 'safe' mails to
-SmtpFailServer - mailserver to send 'evil' mails to
-SmtpFailRedirect - email address to send 'evil' mails to
+SmtpPassDir <path>                 - directory to put 'safe' mails into
+SmtpFailDir <path>                 - directory to put 'evil' mails into
+SmtpPassServer <url>               - mailserver to send 'safe' mails to
+SmtpFailServer <url>               - mailserver to send 'evil' mails to
+SmtpFailRedirect <email address>   - email address to send 'evil' mails to
+SmtpRejectFails <y/n>              - send an error code after SMTP DATA transaction if mail failed checks
 ```
 
-SmtpPassDir and SmtpFailDir specify two directories that mail is sorted into, depending on whether it is considered 'safe' (pass) or 'evil' (fail). If no SmtpPassServer or SmtpFailServer is specified then these mails just sit in these directories, perhaps to be processed by some other program. However, if SmtpPassServer, and/or SmtpFailServer are specified, then the mails are sent to those servers (and deleted from the directories as they are sent). 
+`SmtpPassDir` and `SmtpFailDir` specify two directories that mail is sorted into, depending on whether it is considered 'safe' (pass) or 'evil' (fail). If no SmtpPassServer or SmtpFailServer is specified then these mails just sit in these directories, perhaps to be processed by some other program. However, if SmtpPassServer, and/or SmtpFailServer are specified, then the mails are sent to those servers (and deleted from the directories as they are sent). 
 
-Finally SmtpFailRedirect allows an email address to be specified that 'evil' mails will be sent to. An 'SmtpFailServer' still needs to be specified for this to work, but instead of mail being sent to the original recipient, it will be sent to the email address specified in this option. This allows using the same server for both pass and fail, but sending all failed (evil) mails to a specific email address.
+`SmtpFailRedirect` allows an email address to be specified that 'evil' mails will be sent to. An `SmtpFailServer` still needs to be specified for this to work, but instead of mail being sent to the original recipient, it will be sent to the email address specified in this option. This allows using the same server for both pass and fail, but sending all failed (evil) mails to a specific email address.
+
+`SmtpRejectFails` is a boolean value that causes any mail which fails safety checks to result in a failure code being sent in the SMTP DATA transaction, telling the sending mail program that the mail is considered harmful. This allows mail checking to be performed without SmtpPassDir, SmtpFailDir, SmtpPassServer or SmtpFailServer, provided that the other program detects and acts on the failure code sent in reply to the mail upload.
 
 Smtp servers to send fail and pass mail to can be specified with any of the following forms:
 
@@ -248,6 +251,7 @@ Smtp servers to send fail and pass mail to can be specified with any of the foll
 
 The `<user>` and `<password>` values here are credentials to be used on SMTP servers that require authentication.
 
+N.B. Please be aware that at this stage SMTP server/proxy support is intended for use behind an internet-facing mailserver and in a trusted environment. No hardening with features like linux namespace containers have been added to harden the SMTP server process, though this is intended for future releases.
 
 # MACROS
 
@@ -331,7 +335,7 @@ This is the initial release of mimeguard, and it has some failings. These are th
    * Mimeguard doesn't yet check for macros within Office 97 documents within a zip
    * Mimeguard doesn't have support for .rar or .ace container files
    * Mimeguard doesn't unpack ASCII85 encoded data within .pdf files.
-
+   * Mimeguard SMTP server doesn't use containers/namespaces/chroot etc to harden against malicious actors.
 
 # EXAMPLE CONFIG FILE
 
@@ -342,6 +346,16 @@ MimeTypesFile /etc/mime.types
 
 #you will need to uncomment this and provide these files to use 'region' url rules
 #RegionFiles /etc/ip-regions/*
+
+
+#These only apply when mimeguard is run with -smtp
+SmtpPassDir /tmp/goodmail
+SmtpFailDir /tmp/badmail
+SmtpPassServer mx.mymail.com
+SmtpFailServer bad.mymail.com
+SmtpFailRedirect evil@mymail.com
+SmtpRejectFails Y
+
 
 urlrule iplist /etc/myblocklist.lst evil
 
