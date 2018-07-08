@@ -173,8 +173,6 @@ int SmtpSendRecipients(const char *Recipients, STREAM *S)
     const char *ptr;
     int result=FALSE;
 
-    printf("SEND RECIP: %s\n",Recipients);
-    fflush(NULL);
     ptr=GetToken(Recipients, ",", &Recip, GETTOKEN_HONOR_QUOTES);
     while (ptr)
     {
@@ -211,7 +209,6 @@ STREAM *SMTPConnect(const char *Sender, const char *Recipients, int Flags)
     if (! StrValid(PortStr)) PortStr=CopyStr(PortStr, "25");
     Tempstr=MCopyStr(Tempstr,"tcp:",Host,":",PortStr,NULL);
 //syslog(LOG_DEBUG, "mailto: %s [%s] [%s] [%s]",Tempstr,Proto,Host,PortStr);
-    printf("SMTP SERVER: %s\n",Tempstr);
 
     S=STREAMOpen(Tempstr, "");
     if (S)

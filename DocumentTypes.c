@@ -70,6 +70,7 @@ int DocTypeProcess(STREAM *Doc, TMimeItem *Item, const char *Path)
     }
     else if (
         (DocTypeMatch(Item,"multipart/mixed")) ||
+        (DocTypeMatch(Item,"multipart/alternative")) ||
         (DocTypeMatch(Item,"multipart/related"))
     )
     {

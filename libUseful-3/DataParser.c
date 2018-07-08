@@ -62,6 +62,7 @@ const char *ParserJSONItems(int ParserType, const char *Doc, ListNode *Parent, i
         {
         case '[':
             ptr=ParserAddNewStructure(ParserType, ptr, Parent, ITEM_ARRAY, Name, IndentLevel+1);
+						Name=CopyStr(Name,"");
             break;
 
         case ']':
@@ -71,6 +72,7 @@ const char *ParserJSONItems(int ParserType, const char *Doc, ListNode *Parent, i
 
         case '{':
             ptr=ParserAddNewStructure(ParserType, ptr, Parent, ITEM_ENTITY, Name, IndentLevel+1);
+						Name=CopyStr(Name,"");
             break;
 
         case '}':
@@ -178,6 +180,45 @@ const char *ParserYAMLItems(int ParserType, const char *Doc, ListNode *Parent, i
 
 
 
+/*
+ Parse callbacks for config files of the form:
+
+name=value
+name value
+name: value
+
+type name
+{
+	name=value
+	name value
+	name: value
+}
+*/
+
+#define CONFIG_FILE_TOKENS " |	|#|=|:|;|{|}|\r|\n"
+
+int ParserConfigCheckForBrace(const char **Data)
+{
+char *Token=NULL;
+const char *ptr;
+int result=FALSE;
+
+ptr=*Data;
+if (! ptr) return(FALSE);
+
+while (isspace(*ptr)) ptr++;
+GetToken(ptr, CONFIG_FILE_TOKENS, &Token,GETTOKEN_MULTI_SEP|GETTOKEN_INCLUDE_SEP|GETTOKEN_HONOR_QUOTES);
+if (strcmp(Token, "{")==0)
+{
+	*Data=ptr;
+	result=TRUE;
+}
+DestroyString(Token);
+
+return(result);
+}
+
+
 
 const char *ParserConfigItems(int ParserType, const char *Doc, ListNode *Parent, int IndentLevel)
 {
@@ -186,12 +227,11 @@ const char *ParserConfigItems(int ParserType, const char *Doc, ListNode *Parent,
     ListNode *Node;
     int BreakOut=FALSE;
 
-#define CONFIG_FILE_TOKENS " |	|#|=|:|;|{|}|\r|\n"
 
     ptr=Doc;
     while (ptr && (! BreakOut))
     {
-        while (isspace(*ptr)) ptr++;
+        //while (isspace(*ptr)) ptr++;
         ptr=GetToken(ptr, CONFIG_FILE_TOKENS, &Token,GETTOKEN_MULTI_SEP|GETTOKEN_INCLUDE_SEP|GETTOKEN_HONOR_QUOTES);
 
         switch (*Token)
@@ -201,40 +241,57 @@ const char *ParserConfigItems(int ParserType, const char *Doc, ListNode *Parent,
             break;
 
         case '{':
-            ptr=ParserAddNewStructure(ParserType, ptr, Parent, ITEM_ENTITY, PrevToken, IndentLevel+1);
+            StripLeadingWhitespace(Name);
+            StripTrailingWhitespace(Name);
+
+            ptr=ParserAddNewStructure(ParserType, ptr, Parent, ITEM_ENTITY, Name, IndentLevel+1);
+						Name=CopyStr(Name,"");
+						Token=CopyStr(Token,"");
             break;
 
         case '}':
             BreakOut=TRUE;
             break;
 
-        case '\r':
-        case '\n':
-        case ';':
-            //just ignore
-            break;
-
         case ' ':
         case '	':
-            while (isspace(*ptr)) ptr++;
-
-            // if it's not a knowwn token next then it must be a config line of the form
-            //"name value", so we fall through
-            if (strchr(CONFIG_FILE_TOKENS, *ptr)) break;
-
         case ':':
         case '=':
-            ptr=GetToken(ptr,"\n|;|}",&Token,GETTOKEN_MULTI_SEP | GETTOKEN_INCLUDE_SEP | GETTOKEN_HONOR_QUOTES);
-            StripLeadingWhitespace(Token);
-            StripTrailingWhitespace(Token);
-            Node=ListAddNamedItem(Parent, PrevToken, CopyStr(NULL, Token));
+					  Name=CopyStr(Name, PrevToken);
+            ptr=GetToken(ptr,"\n|;|}|{",&Token,GETTOKEN_MULTI_SEP | GETTOKEN_INCLUDE_SEP | GETTOKEN_HONOR_QUOTES);
+				break;
+
+        case '\r':
+				break;
+
+        case '\n':
+						if (ParserConfigCheckForBrace(&ptr)) 
+						{
+							Name=MCatStr(Name, " ", PrevToken, NULL);
+							break;
+						}
+						
+
+        case ';':
+						if (StrValid(PrevToken))
+						{
+            StripLeadingWhitespace(PrevToken);
+            StripTrailingWhitespace(PrevToken);
+						if (StrValid(Name))
+						{
+            Node=ListAddNamedItem(Parent, Name, CopyStr(NULL, PrevToken));
             Node->ItemType=ITEM_VALUE;
+						}
+						Name=CopyStr(Name,"");
+						//we don't want \r \n or ; tokens included in anything
+						Token=CopyStr(Token,"");
+						}
             break;
 
         default:
-            PrevToken=CopyStr(PrevToken, Token);
             break;
         }
+        PrevToken=CopyStr(PrevToken, Token);
     }
 
     DestroyString(PrevToken);
@@ -312,6 +369,7 @@ const char *ParserRSSItems(int ParserType, const char *Doc, ListNode *Parent, in
             {
             case '/':
                 if (strcasecmp(Token,"/item")==0) BreakOut=TRUE;
+								else if (strcasecmp(Token,"/image")==0) BreakOut=TRUE;
                 else if (strcasecmp(Token,"/channel")==0) /*ignore */ ;
                 else if (strcasecmp(Token,"/rss")==0) /*ignore */ ;
                 //if this is a 'close' for a previous 'open' then add all the data we collected
@@ -328,6 +386,10 @@ const char *ParserRSSItems(int ParserType, const char *Doc, ListNode *Parent, in
                 if (strcasecmp(Token,"item")==0)
                 {
                     ptr=ParserAddNewStructure(ParserType, ptr, Parent, ITEM_ENTITY, NULL, IndentLevel+1);
+                }
+								else if (strcasecmp(Token,"image")==0)
+                {
+                    ptr=ParserAddNewStructure(ParserType, ptr, Parent, ITEM_ENTITY, Token, IndentLevel+1);
                 }
                 else Name=CopyStr(Name, Token);
                 break;

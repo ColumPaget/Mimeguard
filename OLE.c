@@ -70,14 +70,14 @@ long GetNextSector(long Curr)
     if (Curr < 0) return(-1);
     if (Curr > ((DocLen - 512) / SectSize))
     {
-        if (g_Flags & FLAG_DEBUG) printf("Next Sector '%lu' is beyond end of file\n",Next);
+        if (Config->Flags & FLAG_DEBUG) printf("Next Sector '%lu' is beyond end of file\n",Next);
         return(-1);
     }
 
     pos=512 + (Curr * SectSize);
     if (pos > DocLen)
     {
-        if (g_Flags & FLAG_DEBUG) printf("Position of next sector '%llu' is beyond end of file '%llu'\n",pos,DocLen);
+        if (Config->Flags & FLAG_DEBUG) printf("Position of next sector '%llu' is beyond end of file '%llu'\n",pos,DocLen);
         return(-1);
     }
 
@@ -89,7 +89,7 @@ long GetNextSector(long Curr)
     if (Next < 0) return(-1);
     if (Next > ((DocLen - 512) / SectSize))
     {
-        if (g_Flags & FLAG_DEBUG) printf("Next Sector '%lu' is beyond end of file\n",Next);
+        if (Config->Flags & FLAG_DEBUG) printf("Next Sector '%lu' is beyond end of file\n",Next);
         return(-1);
     }
 
@@ -253,7 +253,7 @@ void OLEProcessDirBlock(STREAM *S, int Sector, int Extract)
 
             if (StrValid(Tempstr))
             {
-                if (g_Flags & FLAG_DEBUG) printf("STREAM: %s\n",Tempstr);
+                if (Config->Flags & FLAG_DEBUG) printf("STREAM: %s\n",Tempstr);
                 if (strcmp(Tempstr,"Root Entry")==0) ParseFlags |=OLEPARSE_ROOTENTRY;
                 else if ((strcmp(Tempstr,"Macros")==0) || (strcmp(Tempstr,"VBA")==0) || (strcmp(Tempstr,"_VBA_PROJECT_CUR")==0)) ParseFlags |=OLEPARSE_MACROS;
                 else if (strcmp(Tempstr,"EncryptedPackage")==0) ParseFlags |=OLEPARSE_ENCRYPTED;
@@ -337,7 +337,7 @@ int OLEFileProcess(const char *Path, TMimeItem *Item)
 
     ParseFlags=0;
     Item->RulesResult=RULE_SAFE;
-    if ((g_Flags & FLAG_DEBUG)) printf("Check OLE: [%s]\n",Path);
+    if ((Config->Flags & FLAG_DEBUG)) printf("Check OLE: [%s]\n",Path);
     S=OLEFileOpen(Path, &Header, Item);
 
     if (S)

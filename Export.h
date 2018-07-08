@@ -5,6 +5,6 @@
 #include "Mime.h"
 
 int ExportOpen(TMimeItem *Item, char **SavePath);
-
+void RewriteCopyDocument(TMimeItem *Outer, TMimeItem *Item, const char *Path);
 
 #endif

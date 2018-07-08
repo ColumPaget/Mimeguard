@@ -25,6 +25,11 @@ char *OutputItemErrors(char *RetStr, TMimeItem *Item)
     //to ensure RetStr isn't NULL
     RetStr=CatStr(RetStr,"");
 
+
+		if (Item->RulesResult & RULE_IP) RetStr=CommaList(RetStr,"invalid src IP");
+		if (Item->RulesResult & RULE_IPREGION) RetStr=CommaList(RetStr,"invalid src region");
+		
+
     if (Item->RulesResult & RULE_CONTAINER) RetStr=CommaList(RetStr,"not allowed in container");
     else if (Item->RulesResult & RULE_ENCRYPTED) RetStr=CommaList(RetStr,"encrypted");
     else if (Item->RulesResult & RULE_EMPTY) RetStr=CommaList(RetStr,"empty container");
@@ -66,8 +71,8 @@ void OutputItem(TMimeItem *Top, TMimeItem *Item, int Level, int Safe)
     for (i=0; i < Level; i++) Prefix=CatStr(Prefix,"  ");
 
     if (Level > 0) Show=TRUE;
-    if (Safe && (g_Flags & FLAG_SHOW_SAFE)) Show=TRUE;
-    if ((! Safe) && (g_Flags & FLAG_SHOW_EVIL)) Show=TRUE;
+    if (Safe && (Config->Flags & FLAG_SHOW_SAFE)) Show=TRUE;
+    if ((! Safe) && (Config->Flags & FLAG_SHOW_EVIL)) Show=TRUE;
 
     if (Show)
     {

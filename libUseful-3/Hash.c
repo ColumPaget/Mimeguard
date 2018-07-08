@@ -7,7 +7,7 @@
 typedef void (*HASH_INIT_FUNC)(HASH *Hash, int Len);
 
 
-char *HashTypes[]= {"md5","sha1","sha256","sha512","whirlpool","jh-224","jh-256","jh-384","jh-512",NULL};
+const char *HashTypes[]= {"md5","sha1","sha256","sha512","whirlpool","jh-224","jh-256","jh-384","jh-512",NULL};
 
 //mostly a helper function for environments where integer constants are not convinient
 int HashEncodingFromStr(const char *Str)
@@ -239,7 +239,7 @@ void HashInitCRC(HASH *Hash, int Len)
 
 void HashUpdateMD5(HASH *Hash, const char *Data, int Len)
 {
-    MD5Update((MD5_CTX *) Hash->Ctx, Data, Len);
+    MD5Update((MD5_CTX *) Hash->Ctx, (const unsigned char *) Data, Len);
 }
 
 
@@ -707,27 +707,20 @@ int PBK2DF2(char **Return, char *Type, char *Bytes, int Len, char *Salt, int Sal
     DestroyString(Tempstr);
     DestroyString(Hash);
 
-    StrLen(*Return);
+    return(StrLen(*Return));
 }
 
 
-int HashFile(char **Return, const char *Type, const char *Path, int Encoding)
+int HashSTREAM(char **Return, const char *Type, STREAM *S, int Encoding)
 {
     HASH *Hash;
-    STREAM *S;
     char *Tempstr=NULL;
     int result;
 
-    S=STREAMOpen(Path,"r");
     if (! S) return(FALSE);
 
     Hash=HashInit(Type);
-    if (! Hash)
-    {
-        STREAMClose(S);
-        return(FALSE);
-    }
-
+    if (! Hash) return(FALSE);
 
     Tempstr=SetStrLen(Tempstr,4096);
     result=STREAMReadBytes(S,Tempstr,4096);
@@ -738,7 +731,6 @@ int HashFile(char **Return, const char *Type, const char *Path, int Encoding)
     }
 
     DestroyString(Tempstr);
-    STREAMClose(S);
 
     result=HashFinish(Hash, Encoding, Return);
 
@@ -746,5 +738,19 @@ int HashFile(char **Return, const char *Type, const char *Path, int Encoding)
 }
 
 
+int HashFile(char **Return, const char *Type, const char *Path, int Encoding)
+{
+int result=FALSE;
+STREAM *S;
+
+S=STREAMOpen(Path,"r");
+if (S) 
+{
+	result=HashSTREAM(Return, Type, S, Encoding);
+	STREAMClose(S);
+}
+
+return(result);
+}
 
 

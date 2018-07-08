@@ -22,11 +22,14 @@ Copyright (c) 2015 Colum Paget <colums.projects@googlemail.com>
 #define PROC_SIGDEF 256
 #define PROC_CONTAINER 512
 #define PROC_CONTAINER_NET  1024
+#define PROC_ISOCUBE  2048
 
 //these must be compatible with PROC_ defines
 #define SPAWN_NOSHELL 8192
 #define SPAWN_TRUST_COMMAND 16384
 #define SPAWN_ARG0 32768
+
+#define PROC_SETUP_FAIL 65536
 
 
 #ifdef __cplusplus

@@ -4,7 +4,7 @@
 #include "common.h"
 
 void DocumentStringsAdd(const char *DocType, const char *String, int Flags);
-ListNode *DocumentStringsGetList(const char *DocType);
-int DocumentStringsCheck(ListNode *Items, const char *String);
+const char *DocumentStringsGetList(const char *DocType);
+int DocumentStringsCheck(const char *List, const char *String);
 
 #endif

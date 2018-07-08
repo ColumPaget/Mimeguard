@@ -184,18 +184,6 @@ void SockSetOptions(int sock, int SetFlags, int UnsetFlags)
 
 
 
-int SockSetAttribute(int sock, int Attrib, int Value)
-{
-
-
-}
-
-int SockGetAttribute(int sock, int Attrib, int Value)
-{
-
-
-}
-
 
 int IP6SockAddrCreate(struct sockaddr **ret_sa, const char *Addr, int Port)
 {
@@ -1180,10 +1168,10 @@ int STREAMConnect(STREAM *S, const char *URL, const char *Config)
 //if URL is a comma-seperated list then it's a list of 'connection hops' through proxies
     if (StrValid(GlobalConnectionChain))
     {
-        Value=MCopyStr(Value,GlobalConnectionChain,",",URL);
+        Value=MCopyStr(Value,GlobalConnectionChain,"|",URL);
         result=STREAMProcessConnectHops(S, Value);
     }
-    else if (strchr(URL, ',')) result=STREAMProcessConnectHops(S, URL);
+    else if (strchr(URL, '|')) result=STREAMProcessConnectHops(S, URL);
     else result=STREAMDirectConnect(S, URL, 0);
 
 

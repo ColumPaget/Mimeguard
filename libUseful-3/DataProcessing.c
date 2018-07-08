@@ -693,6 +693,7 @@ TProcessingModule *StandardDataProcessorCreate(const char *Class, const char *Na
 #ifdef HAVE_LIBZ
             Mod->Init=zlibProcessorInit;
 #endif
+
         }
         else if (strcasecmp(Name,"gzip")==0)
         {

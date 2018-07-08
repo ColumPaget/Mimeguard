@@ -8,14 +8,14 @@
 #define PDF_SEPARATORS " |[|]|\n|\r|<<|>>|/"
 
 //Gets called recursively
-int PDFProcessChunk(STREAM *S, const char *Chunk, ListNode *PDFStrings, ListNode *FoundStrings);
+int PDFProcessChunk(STREAM *S, const char *Chunk, const char *PDFStrings, ListNode *FoundStrings);
 
 
 //processes one token from the stream. As '/' counts as a token to the tokenizer, but
 //commands in PDF have the form '/Command' so we prepend the previous token. If it's a '/' it'll
 //give the full command string
 
-int PDFProcessToken(const char *PrevToken, const char *Token, ListNode *PDFStrings, ListNode *FoundStrings)
+int PDFProcessToken(const char *PrevToken, const char *Token, const char *PDFStrings, ListNode *FoundStrings)
 {
     char *HexStr=NULL, *UnQuote=NULL;
     const char *ptr;
@@ -44,14 +44,14 @@ int PDFProcessToken(const char *PrevToken, const char *Token, ListNode *PDFStrin
         len++;
     }
 
-    if ((g_Flags & FLAG_DEBUG) && StrValid(HexStr)) printf("HEX: [%s] [%s]\n",Token, UnQuote);
+    if ((Config->Flags & FLAG_DEBUG) && StrValid(HexStr)) printf("HEX: [%s] [%s]\n",Token, UnQuote);
 
     RetVal=DocumentStringsCheck(PDFStrings, UnQuote);
     if (RetVal==RULE_EVIL)
     {
         RetVal=RULE_EVIL;
         SetTypedVar(FoundStrings, UnQuote, "", ERROR_STRING);
-        if (g_Flags & FLAG_DEBUG) printf("Illegal String: %s\n",UnQuote);
+        if (Config->Flags & FLAG_DEBUG) printf("Illegal String: %s\n",UnQuote);
     }
 
     Destroy(UnQuote);
@@ -94,7 +94,7 @@ int PDFProcessSubType(TMimeItem *Item, const char *Data)
 
 
 
-int PDFProcessStream(STREAM *S, ListNode *PDFStrings, ListNode *FoundStrings)
+int PDFProcessStream(STREAM *S, const char *PDFStrings, ListNode *FoundStrings)
 {
     char *Tempstr=NULL, *Compressed=NULL, *Decompressed=NULL;
     int total=0, len;
@@ -132,7 +132,7 @@ int PDFProcessStream(STREAM *S, ListNode *PDFStrings, ListNode *FoundStrings)
 }
 
 
-int PDFProcessChunk(STREAM *S, const char *Chunk, ListNode *PDFStrings, ListNode *FoundStrings)
+int PDFProcessChunk(STREAM *S, const char *Chunk, const char *PDFStrings, ListNode *FoundStrings)
 {
     char *Token=NULL, *P1Token=NULL, *P2Token=NULL;
     const char *ptr;
@@ -142,7 +142,7 @@ int PDFProcessChunk(STREAM *S, const char *Chunk, ListNode *PDFStrings, ListNode
     P1Token=CopyStr(P1Token,"");
     P2Token=CopyStr(P2Token,"");
 
-    if (g_Flags & FLAG_DEBUG) printf("%s",Chunk);
+    if (Config->Flags & FLAG_DEBUG) printf("%s",Chunk);
     ptr=GetToken(Chunk, PDF_SEPARATORS, &Token, GETTOKEN_MULTI_SEPARATORS| GETTOKEN_INCLUDE_SEP);
 
     while (ptr)
@@ -184,7 +184,7 @@ int PDFProcessCommands(STREAM *S, TMimeItem *Item)
     char *Tempstr=NULL;
     //P1 and P2 tokens are Previous tokens, used to recombine things like '/' onto a string
     int RetVal=RULE_NONE, len;
-    ListNode *PDFStrings;
+    const char *PDFStrings;
 
 
     PDFStrings=DocumentStringsGetList("application/pdf");
@@ -211,7 +211,7 @@ int PDFFileProcess(const char *Path, TMimeItem *Item)
     char *Tempstr=NULL;
     STREAM *S;
 
-    if ((g_Flags & FLAG_DEBUG)) printf("Check PDF: [%s]\n",Path);
+    if ((Config->Flags & FLAG_DEBUG)) printf("Check PDF: [%s]\n",Path);
     S=STREAMFileOpen(Path, SF_RDONLY);
     if (S)
     {

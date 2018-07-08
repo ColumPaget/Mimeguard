@@ -14,16 +14,13 @@ Copyright (c) 2015 Colum Paget <colums.projects@googlemail.com>
 #define TRUE 1
 #endif
 
-#define __LIBUSEFUL_VERSION__ "3.13"
+#define __LIBUSEFUL_VERSION__ VERSION
 #define __LIBUSEFUL_BUILD_DATE__ __DATE__
 #define __LIBUSEFUL_BUILD_TIME__ __TIME__
 
 //__TIME__
 
-#include <unistd.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <stdio.h>
+#include "includes.h"
 #include "memory.h"
 #include "Socket.h"
 #include "UnixSocket.h"
@@ -45,6 +42,7 @@ Copyright (c) 2015 Colum Paget <colums.projects@googlemail.com>
 #include "ConnectionChain.h"
 #include "SpawnPrograms.h"
 #include "DataParser.h"
+#include "CommandLineParser.h"
 #include "URL.h"
 #include "Pty.h"
 #include "Log.h"

@@ -7,5 +7,7 @@ void FileMagicsAdd(const char *FileMagics, char *ContentType);
 const char *FileMagicsLookupContentType(char *Data);
 void FileMagicsLoadFile(const char *Path);
 void FileMagicsLoadDefaults();
+char *FileMagicsExamine(char *RetStr, STREAM *S);
+
 
 #endif

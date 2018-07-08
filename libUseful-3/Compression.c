@@ -178,15 +178,11 @@ int zlibProcessorInit(TProcessingModule *ProcMod, const char *Args)
     }
 
 
-    ProcMod->ReadMax=4096;
-    ProcMod->WriteMax=4096;
-
-
     ZData=(zlibData *) calloc(1,sizeof(zlibData));
     ZData->z_in.avail_in=0;
     ZData->z_in.avail_out=0;
     if (Type==COMP_GZIP) result=inflateInit2(&ZData->z_in,47);
-    else result=inflateInit(&ZData->z_in);
+    else result=inflateInit2(&ZData->z_in, 0-MAX_WBITS);
 
     ZData->z_out.avail_in=0;
     ZData->z_out.avail_out=0;

@@ -7,6 +7,7 @@ STREAM *SSHConnect(const char *Host, int Port, const char *User, const char *Pas
 {
     ListNode *Dialog;
     char *Tempstr=NULL, *KeyFile=NULL, *Token=NULL;
+		const char *ptr;
     STREAM *S;
     int val, i;
 
@@ -28,12 +29,15 @@ STREAM *SSHConnect(const char *Host, int Port, const char *User, const char *Pas
         Tempstr=MCatStr(Tempstr,"-i ",KeyFile," ",NULL);
     }
 
-    if (StrValid(Command))
+		ptr=GetToken(Command, "\\S", &Token, 0);
+		while (ptr)
     {
-        if (strcmp(Command,"none")==0) Tempstr=CatStr(Tempstr, "-N ");
-        else if (strncmp(Command, "tunnel:",7)==0) Tempstr=MCatStr(Tempstr,"-N -L ", Command+7, NULL);
-        else if (strncmp(Command, "stdin:",6)==0) Tempstr=MCatStr(Tempstr,"-W ", Command+6, NULL);
-        else Tempstr=MCatStr(Tempstr, "\"", Command, "\" ", NULL);
+        if (strcmp(Token,"none")==0) Tempstr=CatStr(Tempstr, "-N ");
+        else if (strncmp(Token, "tunnel:",7)==0) Tempstr=MCatStr(Tempstr,"-N -L ", Token+7, NULL);
+        else if (strncmp(Token, "stdin:",6)==0) Tempstr=MCatStr(Tempstr,"-W ", Token+6, NULL);
+        else if (strncmp(Token, "jump:",5)==0) Tempstr=MCatStr(Tempstr,"-J ", Token+5, NULL);
+        else Tempstr=MCatStr(Tempstr, "\"", Token, "\" ", NULL);
+			ptr=GetToken(ptr, "\\S", &Token, 0);
     }
     Tempstr=CatStr(Tempstr, " 2> /dev/null");
 
@@ -55,31 +59,6 @@ STREAM *SSHConnect(const char *Host, int Port, const char *User, const char *Pas
         }
     }
 
-    /*
-    STREAMSetTimeout(S,100);
-
-    Tempstr=FormatStr(Tempstr,"okay %d %d\n",getpid(),time(NULL));
-    STREAMWriteString("echo ",S);
-    STREAMWriteLine(Tempstr,S);
-    STREAMFlush(S);
-
-    StripTrailingWhitespace(Tempstr);
-    for (i=0; i < 3; i++)
-    {
-    Token=STREAMReadLine(Token,S);
-    StripTrailingWhitespace(Token);
-
-    printf("SRL: [%s]\n",Token);
-    if ( StrLen(Token) && (strcmp(Tempstr,Token) ==0) ) break;
-    }
-
-    if (i==3)
-    {
-      printf("Mismatch! [%s] [%s]\n",Token,Tempstr);
-      STREAMClose(S);
-      S=NULL;
-    }
-    */
 
     DestroyString(Tempstr);
     DestroyString(KeyFile);

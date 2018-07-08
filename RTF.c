@@ -40,7 +40,7 @@ int RTFProcessCommands(STREAM *S, TMimeItem *Item)
     char *Tempstr=NULL, *Token=NULL, *UnQuote=NULL, *P1Token=NULL, *P2Token=NULL, *SubType=NULL;
     const char *ptr;
     int RetVal=RULE_NONE;
-    ListNode *RTFStrings;
+    const char *RTFStrings;
 
     P1Token=CopyStr(P1Token,"");
     P2Token=CopyStr(P2Token,"");
@@ -119,7 +119,7 @@ int RTFFileProcess(const char *Path, TMimeItem *Item)
     char *Tempstr=NULL;
     STREAM *S;
 
-    if ((g_Flags & FLAG_DEBUG)) printf("Check RTF: [%s]\n",Path);
+    if ((Config->Flags & FLAG_DEBUG)) printf("Check RTF: [%s]\n",Path);
     S=RTFOpen(Path, Item);
     if (S)
     {

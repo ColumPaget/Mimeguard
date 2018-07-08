@@ -14,6 +14,17 @@
 #endif
 
 
+#ifndef HAVE_GET_CURR_DIR
+char *get_current_dir_name()
+{
+char *path;
+
+path=(char *) calloc(1, PATH_MAX+1);
+getcwd(path, PATH_MAX+1);
+return(path);
+}
+#endif
+
 
 const char *GetBasename(const char *Path)
 {
@@ -94,8 +105,8 @@ int MakeDirPath(const char *Path, int DirMask)
 
 int FileChangeExtension(const char *FilePath, const char *NewExt)
 {
-    char *ptr;
     char *Tempstr=NULL;
+    char *ptr;
     int result;
 
     Tempstr=CopyStr(Tempstr,FilePath);
@@ -116,6 +127,24 @@ int FileChangeExtension(const char *FilePath, const char *NewExt)
 }
 
 
+int FileMoveToDir(const char *FilePath, const char *Dir)
+{
+    char *Tempstr=NULL;
+    char *ptr;
+    int result;
+
+		Tempstr=MCopyStr(Tempstr, Dir, "/", GetBasename(FilePath));
+		MakeDirPath(Tempstr, 0700);
+    result=rename(FilePath,Tempstr);
+    if (result !=0) RaiseError(ERRFLAG_ERRNO, "FileMoveToDir", "cannot rename '%s' to '%s'",FilePath, Tempstr);
+
+    DestroyString(Tempstr);
+
+    if (result==0) return(TRUE);
+    else return(FALSE);
+}
+
+
 int FindFilesInPath(const char *File, const char *Path, ListNode *Files)
 {
     char *Tempstr=NULL, *CurrPath=NULL;
@@ -129,6 +158,7 @@ int FindFilesInPath(const char *File, const char *Path, ListNode *Files)
         ptr=""; //so we execute once below
     }
     else ptr=GetToken(Path,":",&CurrPath,0);
+
     while (ptr)
     {
         CurrPath=SlashTerminateDirectoryPath(CurrPath);
@@ -367,7 +397,7 @@ int FileSystemMount(const char *Dev, const char *MountPoint, const char *Type, c
     result=mount(Dev,p_MountPoint,p_Type,Flags,NULL);
 #else
 //assume BSD if not linux
-    result=mount(p_Type,p_MountPoint,Flags,Dev);
+    result=mount(p_Type,p_MountPoint,Flags,(void *) Dev);
 #endif
 
 
@@ -393,6 +423,69 @@ int FileSystemMount(const char *Dev, const char *MountPoint, const char *Type, c
 
 #define UMOUNT_RECURSE 1
 #define UMOUNT_RMDIR   2
+#define UMOUNT_SUBDIRS 4
+
+
+int FileSystemUnMountFlagsDepth(const char *MountPoint, int UnmountFlags, int ExtraFlags, int Depth, int MaxDepth)
+{
+int result, i;
+char *Path=NULL;
+struct stat FStat;
+glob_t Glob;
+
+if (strcmp(MountPoint,"/proc")==0) MaxDepth=10;
+if (strcmp(MountPoint,"/sys")==0) MaxDepth=10;
+if (strcmp(MountPoint,"/dev")==0) MaxDepth=10;
+
+
+
+if (ExtraFlags & UMOUNT_RECURSE)
+{
+	if ((MaxDepth ==0) || (Depth <= MaxDepth))
+	{
+   Path=MCopyStr(Path,MountPoint,"/*",NULL);
+   glob(Path, 0, 0, &Glob);
+   for (i=0; i < Glob.gl_pathc; i++)
+   {
+       if (stat(Glob.gl_pathv[i],&FStat)==0)
+			 {
+       if (S_ISDIR(FStat.st_mode))
+       {
+           FileSystemUnMountFlagsDepth(Glob.gl_pathv[i], UnmountFlags, ExtraFlags & ~UMOUNT_SUBDIRS, Depth+1, MaxDepth);
+       }
+			 }
+    }
+		globfree(&Glob);
+	}
+}
+
+if (ExtraFlags & UMOUNT_SUBDIRS) return(0);
+
+result=0;
+while (result > -1)
+{
+#ifdef HAVE_UMOUNT2
+    result=umount2(MountPoint, UnmountFlags);
+#elif HAVE_UMOUNT
+    result=umount(MountPoint);
+#elif HAVE_UNMOUNT
+    result=unmount(MountPoint,0);
+#else
+    result=-1;
+#endif
+}
+
+if (ExtraFlags & UMOUNT_RMDIR) rmdir(MountPoint);
+
+Destroy(Path);
+return(result);
+}
+
+
+int FileSystemUnMountFlags(const char *MountPoint, int UnmountFlags, int ExtraFlags)
+{
+return(FileSystemUnMountFlagsDepth(MountPoint, UnmountFlags, ExtraFlags, 0, 0));
+}
 
 int FileSystemUnMount(const char *MountPoint, const char *Args)
 {
@@ -400,9 +493,7 @@ int FileSystemUnMount(const char *MountPoint, const char *Args)
     int ExtraFlags=0;
     char *Token=NULL;
     const char *ptr;
-    struct stat FStat;
-    int i, result;
-    glob_t Glob;
+    int result;
 
     ptr=GetToken(Args, " |,", &Token, GETTOKEN_MULTI_SEP);
     while (ptr)
@@ -411,39 +502,13 @@ int FileSystemUnMount(const char *MountPoint, const char *Args)
         if (strcmp(Token,"lazy")==0) Flags |= MNT_DETACH;
         if (strcmp(Token,"detach")==0) Flags |= MNT_DETACH;
         if (strcmp(Token,"recurse")==0) ExtraFlags |= UMOUNT_RECURSE;
+        if (strcmp(Token,"subdirs")==0) ExtraFlags |= UMOUNT_SUBDIRS | UMOUNT_RECURSE;
         if (strcmp(Token,"rmdir")==0) ExtraFlags |= UMOUNT_RMDIR;
 
         ptr=GetToken(ptr, " |,", &Token, GETTOKEN_MULTI_SEP);
     }
 
-    if (ExtraFlags & UMOUNT_RECURSE)
-    {
-        Token=MCopyStr(Token,MountPoint,"/*",NULL);
-        glob(Token, 0, 0, &Glob);
-        for (i=0; i < Glob.gl_pathc; i++)
-        {
-            stat(Glob.gl_pathv[i],&FStat);
-            if (S_ISDIR(FStat.st_mode))
-            {
-                FileSystemUnMount(Glob.gl_pathv[i], Args);
-            }
-        }
-        globfree(&Glob);
-    }
-
-
-
-#ifdef HAVE_UMOUNT2
-    result=umount2(MountPoint, Flags);
-#elif HAVE_UMOUNT
-    result=umount(MountPoint);
-#elif HAVE_UNMOUNT
-    result=unmount(MountPoint,0);
-#else
-    result=-1;
-#endif
-
-    if (ExtraFlags & UMOUNT_RMDIR) rmdir(MountPoint);
+		result=FileSystemUnMountFlags(MountPoint, Flags, ExtraFlags);
     DestroyString(Token);
 
     return(result);

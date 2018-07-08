@@ -17,9 +17,11 @@ char *HTMLReformatURL(char *RetStr, const char *URL)
     {
         ptr++;
         while (*ptr=='/') ptr++;
-
-        if (! strchr(ptr, '/')) RetStr=CatStr(RetStr, "/");
     }
+		else ptr=RetStr;
+
+    if (! strchr(ptr, '/')) RetStr=CatStr(RetStr, "/");
+		
 
     S=STREAMOpen(URL,"r");
     if (S)
@@ -63,10 +65,11 @@ int HTMLTagWithURL(TMimeItem *Item, const char *TagData)
         if ((strcasecmp(Name,"href")==0) || (strcasecmp(Name,"src")==0))
         {
             Tempstr=HTMLReformatURL(Tempstr, Value);
+
             //Don't consider mailto URLs
             if (strncmp(Tempstr,"mailto:",7) !=0)
             {
-                if (g_Flags & FLAG_DEBUG) printf("URL: %s\n",Value);
+                if (Config->Flags & FLAG_DEBUG) printf("URL: %s\n",Value);
                 URLRuleCheck(Item, Tempstr);
                 HTMLAddURLSubItem(Item, Tempstr);
             }
@@ -85,7 +88,7 @@ int HTMLProcess(STREAM *S, TMimeItem *Item)
     char *Tempstr=NULL, *Line=NULL, *TagName=NULL, *TagData=NULL;
     const char *ptr;
     int RetVal=RULE_NONE;
-    ListNode *HTMLStrings;
+    const char *HTMLStrings;
 
     HTMLStrings=DocumentStringsGetList("text/html");
     Line=STREAMReadLine(Line, S);
@@ -143,7 +146,7 @@ int HTMLFileProcess(const char *Path, TMimeItem *Item)
     char *Tempstr=NULL;
     STREAM *S;
 
-    if ((g_Flags & FLAG_DEBUG)) printf("Check HTML: [%s]\n",Path);
+    if ((Config->Flags & FLAG_DEBUG)) printf("Check HTML: [%s]\n",Path);
     S=STREAMFileOpen(Path, SF_RDONLY);
     if (S)
     {

@@ -312,6 +312,7 @@ int PseudoTTYGrab(int *pty, int *tty, int TermFlags)
 {
     char c1,c2;
     char *Tempstr=NULL;
+		struct termios tty_conf;
 
 //first try unix98 style
     *pty=open("/dev/ptmx",O_RDWR);
@@ -319,7 +320,8 @@ int PseudoTTYGrab(int *pty, int *tty, int TermFlags)
     {
         if (grantpt(*pty)==-1) RaiseError(ERRFLAG_ERRNO, "pty", "grantpt failed");
         if (unlockpt(*pty)==-1) RaiseError(ERRFLAG_ERRNO, "pty", "unlockpt failed");
-        SetStrLen(Tempstr,100);
+        Tempstr=SetStrLen(Tempstr,100);
+				memset(Tempstr, 0, 100);
 
 #ifdef HAVE_PTSNAME_R
         if (ptsname_r(*pty,Tempstr,100) != 0)
@@ -329,7 +331,7 @@ int PseudoTTYGrab(int *pty, int *tty, int TermFlags)
         {
             if ( (*tty=open(Tempstr,O_RDWR)) >-1)
             {
-                TTYConfig(*tty,0,TermFlags);
+                if (TermFlags !=0) TTYConfig(*tty,0,TermFlags);
                 DestroyString(Tempstr);
                 return(1);
             }

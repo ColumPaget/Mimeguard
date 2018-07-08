@@ -31,7 +31,8 @@ ListNode *Errors;
 TMimeItem *MimeItemCreate(const char *FileName, const char *ContentType, const char *FileMagicsType);
 void MimeItemDestroy(void *pItem);
 char *MimeItemGetContentType(TMimeItem *Item);
-TMimeItem *MimeReadHeaders(STREAM *S);
+TMimeItem *MimeReadHeaders(STREAM *S, int CopyToRewrite);
+TMimeItem *MimeReadAndCopyHeaders(STREAM *S, STREAM*Rewrite);
 void MimeReadMultipart(STREAM *S, TMimeItem *Outer);
 STREAM *MimeReadDocument(STREAM *S, TMimeItem *Item, const char *Boundary, char **SavePath);
 

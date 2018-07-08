@@ -2,6 +2,7 @@
 #include "Unicode.h"
 #include "Pty.h"
 #include <sys/ioctl.h>
+#include <termios.h>
 
 const char *ANSIColorStrings[]= {"none","black","red","green","yellow","blue","magenta","cyan","white",NULL};
 
@@ -640,7 +641,7 @@ char *TerminalFormatStr(char *RetStr, const char *Str)
 
 
 
-int TerminalCommand(int Cmd, int Arg1, int Arg2, STREAM *S)
+void TerminalCommand(int Cmd, int Arg1, int Arg2, STREAM *S)
 {
     char *Tempstr=NULL;
 

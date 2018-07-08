@@ -23,15 +23,15 @@ void FileMagicsConvertString(TFileMagics *Magic, const char *String)
     {
         if (*ptr=='\\')
         {
-            ptr++;
-            switch (*ptr)
+            switch (*(ptr+1))
             {
             case '\\':
                 Magic->Match=AddCharToBuffer(Magic->Match, Magic->MatchLen++, '\\');
+								ptr++;
                 break;
 
             case 'x':
-                ptr++;
+                ptr+=2;
                 Token=CopyStrLen(Token,ptr,2);
                 Magic->Match=AddCharToBuffer(Magic->Match, Magic->MatchLen++, strtol(Token,NULL, 16));
                 ptr++; //only ++, because the for loop will do another ++
@@ -45,6 +45,7 @@ void FileMagicsConvertString(TFileMagics *Magic, const char *String)
             case '5':
             case '6':
             case '7':
+								ptr++;
                 Token=CopyStrLen(Token,ptr,3);
                 Magic->Match=AddCharToBuffer(Magic->Match, Magic->MatchLen++, strtol(Token, NULL, 8));
                 ptr+=2; //only +2, because the ptr++ in the for loop will make it +3
@@ -155,6 +156,7 @@ void FileMagicsLoadDefaults()
     FileMagicsAdd("<HTML", "text/html");
     FileMagicsAdd(OLE_MAGIC, "application/x-ole-storage");
     FileMagicsAdd(RTF_MAGIC, "application/rtf");
+    FileMagicsAdd("{\\\\rt", "application/rtf");
 }
 
 
@@ -168,9 +170,27 @@ const char *FileMagicsLookupContentType(char *Data)
     {
         Magic=(TFileMagics *) Curr->Item;
 
+				if (Config->Flags & FLAG_DEBUG) printf("FileMagics: compare %d bytes of [%s] with [%s]\n",Magic->MatchLen, Magic->Match, Data);
         if (strncmp(Data, Magic->Match, Magic->MatchLen)==0) return(Magic->ContentType);
         Curr=ListGetNext(Curr);
     }
 
     return(NULL);
 }
+
+
+
+char *FileMagicsExamine(char *RetStr, STREAM *S)
+{
+    char *Tempstr=NULL;
+
+    Tempstr=SetStrLen(Tempstr, 255);
+    STREAMPeekBytes(S,Tempstr,255);
+
+    RetStr=CopyStr(RetStr, FileMagicsLookupContentType(Tempstr));
+
+    Destroy(Tempstr);
+
+    return(RetStr);
+}
+

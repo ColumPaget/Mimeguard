@@ -35,18 +35,25 @@ mimeguard <options> <paths>
 
 Options are:
 ```
-  --help          Print this help
-  -help           Print this help
-  -?              Print this help
-  --version       Print program version
-  -version        Print program version
-  -c <path>       Path to config file
-  -d              Print debugging
-  -x              Dump/export/unpack file contents
-  -safe           Only show safe files
-  -evil           Only show unsafe/evil files
-  -show <email header> Show Email Header
-	-smtp           Run in SMTP proxy mode
+  --help                    Print help
+  -help                     Print help
+  -?                        Print help
+  --version                 Print program version
+  -version                  Print program version
+  -c <path>                 Path to config file
+  -d                        Print debugging
+  -x                        Dump/export/unpack file contents
+  -safe                     Only show safe files
+  -evil                     Only show unsafe/evil files
+  -strip                    Rewrite email files with harmful items removed
+  -safe-dir <path>          Move safe files to directory <path>
+  -evil-dir <path>          Move unsafe files to directory <path>
+  -show <email header>      Show specified email header
+  -smtp <address>           Run in SMTP mode. <address> is an optional argument of an address/port to bind to
+  -smtp-banner <string>     Initial server banner when running in SMTP mode
+  -smtp-safe   <address>    Server to send 'safe' mails to
+  -smtp-evil   <address>    Server to send 'evil' mails to
+  -smtp-dest   <address>    Server to send all mails to
 ```
 
 When run on a console mimeguard will print out a color-coded breakdown of files/mime-types, highlighting any that it considers safe/not safe. This allows easy testing of changes made to your configuration file. When run with the `-smtp` flag mimeguard will run as an SMTP server/proxy, allowing mails to be sent to it for analysis and sorting (see SMTP MODE below).
@@ -209,6 +216,21 @@ Header From *@microsoft.com FileType applicationa/x-ms* safe
 
 This allows different configs for different email senders/recipients.
 
+
+# SOURCE IP CHECKS
+
+The 'Header' config can also have a 'Source' action. Like so:
+
+Header From *.gov.uk Source region=ripencc:GB
+
+the 'source' action runs checks against the source ip-address for a mail. Options can be:
+
+ip <address>      require a given ip address.
+region <region>   require a region (<registrar>:<country code>).
+
+This allows a certain email address or email domain to be pinned to a given region or ip address. This system uses the 'Received' email header, and so requires an email server that supports that. 
+
+
 # CONFIG PATHS
 
 The MagicsFile, MimeTypesFile and RegionFile configuration entries all take a 'path' argument. This 'path' can actually be a comma-separated list of paths, and it can include fnmatch-style wildcards. For example:
@@ -223,20 +245,25 @@ Each entry in a path list can also have a 'protocol' prefix. Currently the proto
 
 # SMTP MODE
 
-Mimeguard can act as an SMTP server to receive mails for processing. This is activated by the '-smtp' command-line option. In this mode a number of extra config-file options become activated. 
+Mimeguard can act as an SMTP server to receive mails for processing. This is activated by the '-smtp' command-line option. The '-smtp' switch has an optional argument, which specifies the host and port to bind to. It has the format '<address>:<port>'. If <port> is not specified then it defaults to port 25. If no argument is supplied the default is 127.0.0.1:25.   
+
+
+
+In this mode a number of extra config-file options become activated. 
 
 ```
 SmtpPassDir <path>                 - directory to put 'safe' mails into
 SmtpFailDir <path>                 - directory to put 'evil' mails into
 SmtpPassServer <url>               - mailserver to send 'safe' mails to
 SmtpFailServer <url>               - mailserver to send 'evil' mails to
+SmtpNextServer <url>               - mailserver to send all mails to
 SmtpFailRedirect <email address>   - email address to send 'evil' mails to
 SmtpRejectFails <y/n>              - send an error code after SMTP DATA transaction if mail failed checks
 ```
 
 `SmtpPassDir` and `SmtpFailDir` specify two directories that mail is sorted into, depending on whether it is considered 'safe' (pass) or 'evil' (fail). If no SmtpPassServer or SmtpFailServer is specified then these mails just sit in these directories, perhaps to be processed by some other program. However, if SmtpPassServer, and/or SmtpFailServer are specified, then the mails are sent to those servers (and deleted from the directories as they are sent). 
 
-`SmtpFailRedirect` allows an email address to be specified that 'evil' mails will be sent to. An `SmtpFailServer` still needs to be specified for this to work, but instead of mail being sent to the original recipient, it will be sent to the email address specified in this option. This allows using the same server for both pass and fail, but sending all failed (evil) mails to a specific email address.
+`SmtpFailRedirect` allows an email address (address, not server) to be specified that 'evil' mails will be sent to. An `SmtpFailServer` still needs to be specified for this to work, but instead of mail being sent to the original recipient, it will be sent to the email address specified in this option. This allows using the same server for both pass and fail, but sending all failed (evil) mails to a specific email address.
 
 `SmtpRejectFails` is a boolean value that causes any mail which fails safety checks to result in a failure code being sent in the SMTP DATA transaction, telling the sending mail program that the mail is considered harmful. This allows mail checking to be performed without SmtpPassDir, SmtpFailDir, SmtpPassServer or SmtpFailServer, provided that the other program detects and acts on the failure code sent in reply to the mail upload.
 
@@ -331,8 +358,6 @@ Notice the use of a double backslash before objocx. This is needed because backs
 
 This is the initial release of mimeguard, and it has some failings. These are things I plan to fix at some future date:
 
-   * Mimeguard doesn't fully unpack .zip files, it just looks one level into them. Thus you should disallow zips within zips
-   * Mimeguard doesn't yet check for macros within Office 97 documents within a zip
    * Mimeguard doesn't have support for .rar or .ace container files
    * Mimeguard doesn't unpack ASCII85 encoded data within .pdf files.
    * Mimeguard SMTP server doesn't use containers/namespaces/chroot etc to harden against malicious actors.

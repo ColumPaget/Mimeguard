@@ -8,6 +8,7 @@ Copyright (c) 2015 Colum Paget <colums.projects@googlemail.com>
 
 #include <stdio.h>
 #include "defines.h"
+#include "includes.h"
 
 /*
 A number of general functions that don't fit anywhere else
@@ -60,6 +61,10 @@ char *GetRandomData(char *RetBuff, int len, char *AllowedChars);
 //get a random string of alphanumeric characters
 char *GetRandomAlphabetStr(char *RetBuff, int len);
 
+#define SHELLSAFE_BLANK 1
+
+char *MakeShellSafeString(char *RetStr, const char *String, int SafeLevel);
+
 const char *ToSIUnit(double Value, int Base, int Precision);
 #define ToIEC(Value, Precision) (ToSIUnit((Value), 1024, Precision))
 #define ToMetric(Value, Precision) (ToSIUnit((Value), 1000, Precision))
@@ -70,11 +75,20 @@ double FromSIUnit(const char *Data, int BAse);
 #define FromMetric(Value, Precision) (FromSIUnit((Value), 1000))
 
 
+int fd_remap(int fd, int newfd);
+int fd_remap_path(int fd, const char *Path, int Flags);
+
 //lookup uid for User
 int LookupUID(const char *User);
 
-//lookup Gid for Group
+//lookup gid for Group
 int LookupGID(const char *Group);
+
+//lookup username from uid
+const char *LookupUserName(uid_t uid);
+
+//lookup groupname from uid
+const char *LookupGroupName(gid_t gid);
 
 
 //given a key generate a hash value using the fnv method. Then mod this value by NoOfItems and return result.

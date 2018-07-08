@@ -5,6 +5,7 @@
 #include "FileMagics.h"
 #include "URL.h"
 #include "IPRegion.h"
+#include "EmailHeaders.h"
 #include "Smtp.h"
 
 
@@ -12,20 +13,13 @@
 
 void ConfigFileParseFileStringRule(const char *Data)
 {
-    char *ContentType=NULL, *String=NULL;
-    const char *ptr;
+ char *ContentType=NULL;
+ const char *ptr;
 
-    ptr=GetToken(Data,"\\S",&ContentType,GETTOKEN_QUOTES);
-    ptr=GetToken(ptr,"\\S",&String,GETTOKEN_QUOTES);
-    while (ptr)
-    {
-        if (StrValid(String)) DocumentStringsAdd(ContentType, String, RULE_EVIL);
+ ptr=GetToken(Data,"\\S",&ContentType,GETTOKEN_QUOTES);
+ if (StrValid(ptr)) DocumentStringsAdd(ContentType, ptr, RULE_EVIL);
 
-        ptr=GetToken(ptr,"\\S",&String,GETTOKEN_QUOTES);
-    }
-
-    Destroy(ContentType);
-    Destroy(String);
+ Destroy(ContentType);
 }
 
 
@@ -36,7 +30,7 @@ void ConfigFileParseMimeHeaderRule(const char *Data)
 
     ptr=GetToken(Data,"\\S",&Header,GETTOKEN_QUOTES);
     ptr=GetToken(ptr,"\\S",&Value,GETTOKEN_QUOTES);
-    FileRulesAdd(Header, RULE_HEADER, Value, ptr);
+		EmailHeaderRulesAdd(Header, Value, ptr);
 
     Destroy(Header);
     Destroy(Value);
@@ -82,6 +76,7 @@ void ConfigFileLoad(const char *Path)
                 if (strcasecmp(Token, "SmtpFailDir")==0) SmtpConfig(Token, ptr);
                 if (strcasecmp(Token, "SmtpPassServer")==0) SmtpConfig(Token, ptr);
                 if (strcasecmp(Token, "SmtpFailServer")==0) SmtpConfig(Token, ptr);
+                if (strcasecmp(Token, "SmtpNextServer")==0) SmtpConfig(Token, ptr);
                 if (strcasecmp(Token, "SmtpBanner")==0) SmtpConfig(Token, ptr);
                 if (strcasecmp(Token, "SmtpFailRedirect")==0) SmtpConfig(Token, ptr);
                 if (strcasecmp(Token, "SmtpRejectFails")==0) SmtpConfig(Token, ptr);

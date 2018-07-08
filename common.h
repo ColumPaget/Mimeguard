@@ -9,15 +9,32 @@
 #define FLAG_SHOW_CURR 8
 #define FLAG_SMTP 16
 #define FLAG_DEBUG 8192
+#define FLAG_STRIP 16384
 
 typedef enum {KV_FILE_EXTN, KV_DOCSTRINGS, KV_DOCSTRINGS_OVERRIDE, KV_EQUIV_MIMETYPE, KV_IPREGION, KV_IP} EKeyValueTypes;
 
-extern int g_Flags;
+
+typedef struct
+{
+int Flags;
+char *SmtpAddress;
+char *ConfigPath;
+char *ExportPath;
+char *SafeDir;
+char *EvilDir;
+char *SmtpPassServer;
+char *SmtpFailServer;
+char *SmtpBanner;
+char *SmtpFailRedirect;
+int SmtpFlags;
+} TConfig;
+
+extern TConfig *Config;
+
 extern STREAM *g_Rewrite;
 extern ListNode *g_KeyValueStore;
 
-extern char *ExportPath;
-
+void ConfigInit();
 char *DecodeMailText(char *RetStr, const char *Text);
 int DecodeDocumentLine(const char *Line, int Encoding, char **Data);
 char *FileListExpand(char *RetStr, const char *FilesList);

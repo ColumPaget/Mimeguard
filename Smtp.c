@@ -2,7 +2,7 @@
 #include "Mime.h"
 #include "DocumentTypes.h"
 #include "FileTypeRules.h"
-#include <wait.h>
+#include <sys/wait.h>
 #include <glob.h>
 
 const char *SmtpCommands[]= {"HELO ", "EHLO", "MAIL FROM:", "RCPT TO:", "DATA", "QUIT", NULL};
@@ -10,24 +10,21 @@ typedef enum {SMTP_HELO, SMTP_EHLO, SMTP_MAILFROM, SMTP_RCPTTO, SMTP_DATA, SMTP_
 
 #define SMTP_REJECT 1
 
-char *SmtpPassDir=NULL;
-char *SmtpFailDir=NULL;
-char *SmtpPassServer=NULL;
-char *SmtpFailServer=NULL;
-char *SmtpBanner=NULL;
-char *SmtpFailRedirect=NULL;
-int SmtpFlags=0;
-
 
 void SmtpConfig(const char *Setting, const char *Value)
 {
-    if (strcmp(Setting, "SmtpPassDir")==0) SmtpPassDir=CopyStr(SmtpPassDir, Value);
-    if (strcmp(Setting, "SmtpFailDir")==0) SmtpFailDir=CopyStr(SmtpFailDir, Value);
-    if (strcmp(Setting, "SmtpPassServer")==0) SmtpPassServer=CopyStr(SmtpPassServer, Value);
-    if (strcmp(Setting, "SmtpFailServer")==0) SmtpFailServer=CopyStr(SmtpFailServer, Value);
-    if (strcmp(Setting, "SmtpFailRedirect")==0) SmtpFailRedirect=CopyStr(SmtpFailRedirect, Value);
-    if (strcmp(Setting, "SmtpBanner")==0) SmtpBanner=CopyStr(SmtpBanner, Value);
-    if ((strcmp(Setting, "SmtpRejectFails")==0) && (strtobool(Value))) SmtpFlags |= SMTP_REJECT;
+    if ((! StrValid(Config->SafeDir)) && (strcmp(Setting, "SmtpPassDir")==0)) Config->SafeDir=CopyStr(Config->SafeDir, Value);
+    if ((! StrValid(Config->EvilDir)) && (strcmp(Setting, "SmtpFailDir")==0)) Config->EvilDir=CopyStr(Config->EvilDir, Value);
+    if (strcmp(Setting, "SmtpFailRedirect")==0) Config->SmtpFailRedirect=CopyStr(Config->SmtpFailRedirect, Value);
+    if (strcmp(Setting, "SmtpBanner")==0) Config->SmtpBanner=CopyStr(Config->SmtpBanner, Value);
+    if ((strcmp(Setting, "SmtpRejectFails")==0) && (strtobool(Value))) Config->SmtpFlags |= SMTP_REJECT;
+    if (strcmp(Setting, "SmtpPassServer")==0) Config->SmtpPassServer=CopyStr(Config->SmtpPassServer, Value);
+    if (strcmp(Setting, "SmtpFailServer")==0) Config->SmtpFailServer=CopyStr(Config->SmtpFailServer, Value);
+    if (strcmp(Setting, "SmtpNextServer")==0) 
+		{
+    	Config->SmtpPassServer=CopyStr(Config->SmtpPassServer, Value);
+			Config->SmtpFailServer=CopyStr(Config->SmtpFailServer, Value);
+		}
 }
 
 
@@ -93,18 +90,18 @@ void SmtpPostProcessFile(const char *Path, int result)
 
     if (result & RULE_EVIL)
     {
-        if (StrValid(SmtpFailDir))
+        if (StrValid(Config->EvilDir))
         {
-            Tempstr=MCopyStr(Tempstr, SmtpFailDir, "/", GetBasename(Path), NULL);
+            Tempstr=MCopyStr(Tempstr, Config->EvilDir, "/", GetBasename(Path), NULL);
             MakeDirPath(Tempstr, 0700);
             rename(Path, Tempstr);
         }
     }
     else
     {
-        if (StrValid(SmtpPassDir))
+        if (StrValid(Config->SafeDir))
         {
-            Tempstr=MCopyStr(Tempstr, SmtpPassDir, "/", GetBasename(Path), NULL);
+            Tempstr=MCopyStr(Tempstr, Config->SafeDir, "/", GetBasename(Path), NULL);
             MakeDirPath(Tempstr, 0700);
             rename(Path, Tempstr);
         }
@@ -118,8 +115,8 @@ void SmtpPostProcessFile(const char *Path, int result)
 
 void SmtpProcessQueue()
 {
-    if (StrValid(SmtpPassServer)) SmtpForwardFiles(SmtpPassServer, SmtpPassDir, "");
-    if (StrValid(SmtpFailServer)) SmtpForwardFiles(SmtpFailServer, SmtpFailDir, SmtpFailRedirect);
+    if (StrValid(Config->SmtpPassServer)) SmtpForwardFiles(Config->SmtpPassServer, Config->SafeDir, "");
+    if (StrValid(Config->SmtpFailServer)) SmtpForwardFiles(Config->SmtpFailServer, Config->EvilDir, Config->SmtpFailRedirect);
 }
 
 
@@ -168,7 +165,7 @@ int SmtpProcessDataCommand(STREAM *S, const char *Sender, const char *Recipients
     STREAMClose(tmpS);
 
     tmpS=STREAMOpen(Path, "r");
-    MimeOuter=MimeReadHeaders(tmpS);
+    MimeOuter=MimeReadHeaders(tmpS, FALSE);
     if (MimeOuter)
     {
         MimeOuter->Flags |= MIMEFLAG_ROOT;
@@ -198,9 +195,9 @@ pid_t SmtpHandleConnection(STREAM *S)
     const char *ptr;
     int val, More=TRUE;
 
-    if (StrValid(SmtpBanner))
+    if (StrValid(Config->SmtpBanner))
     {
-        Tempstr=MCopyStr(Tempstr, "220 ", SmtpBanner, "\r\n",NULL);
+        Tempstr=MCopyStr(Tempstr, "220 ", Config->SmtpBanner, "\r\n",NULL);
         STREAMWriteLine("220 OKAY\r\n", S);
     }
     else STREAMWriteLine("220 OKAY\r\n", S);
@@ -236,7 +233,7 @@ pid_t SmtpHandleConnection(STREAM *S)
             case SMTP_DATA:
                 STREAMWriteLine("354 CONTINUE\r\n", S);
                 if (SmtpProcessDataCommand(S, Sender, Recipients) == RULE_SAFE) STREAMWriteLine("250 OKAY\r\n", S);
-                else if (SmtpFlags & SMTP_REJECT) STREAMWriteLine("550 FAIL\r\n", S);
+                else if (Config->SmtpFlags & SMTP_REJECT) STREAMWriteLine("550 FAIL\r\n", S);
                 else STREAMWriteLine("250 OKAY\r\n", S);
                 break;
 
@@ -278,6 +275,28 @@ void SetupSigChild()
     sigemptyset (&sa.sa_mask);
 
     sigaction(SIGCHLD, &sa, NULL);
+}
+
+
+STREAM *SmtpBindService(const char *URL)
+{
+char *Tempstr=NULL, *Host=NULL, *PortStr=NULL, *Proto=NULL;
+int Port=25;
+STREAM *S;
+
+ParseURL(URL, &Proto, &Host, &PortStr, NULL, NULL, NULL, NULL);
+
+if (StrLen(PortStr)) Port=atoi(PortStr);
+Tempstr=FormatStr(Tempstr, "tcp://%s:%d",Host,Port);
+
+S=STREAMServerInit(Tempstr);
+
+Destroy(Tempstr);
+Destroy(PortStr);
+Destroy(Proto);
+Destroy(Host);
+
+return(S);
 }
 
 

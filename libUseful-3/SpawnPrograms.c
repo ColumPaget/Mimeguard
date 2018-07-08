@@ -5,35 +5,17 @@
 #include "Stream.h"
 #include "String.h"
 #include "Errors.h"
+#include "FileSystem.h"
 #include <sys/ioctl.h>
 
 
-//This Function eliminates characters from a string that can be used to trivially achieve code-exec via the shell
-char *MakeShellSafeString(char *RetStr, const char *String, int SafeLevel)
-{
-    char *Tempstr=NULL;
-    char *BadChars=";|&`";
-
-    if (SafeLevel==SHELLSAFE_BLANK)
-    {
-        Tempstr=CopyStr(RetStr,String);
-        strmrep(Tempstr,BadChars,' ');
-    }
-    else Tempstr=QuoteCharsInStr(RetStr,String,BadChars);
-
-    if (strcmp(Tempstr,String) !=0)
-    {
-        //if (EventCallback) EventCallback(String);
-    }
-    return(Tempstr);
-}
 
 
 //This is the function we call in the child process for 'SpawnCommand'
 int BASIC_FUNC_EXEC_COMMAND(void *Command, int Flags)
 {
     int result;
-    char *Token=NULL, *FinalCommand=NULL;
+    char *Token=NULL, *FinalCommand=NULL, *ExecPath=NULL;
     char **argv;
     const char *ptr;
     int i;
@@ -41,33 +23,36 @@ int BASIC_FUNC_EXEC_COMMAND(void *Command, int Flags)
     if (Flags & SPAWN_TRUST_COMMAND) FinalCommand=CopyStr(FinalCommand, (char *) Command);
     else FinalCommand=MakeShellSafeString(FinalCommand, (char *) Command, 0);
 
+    StripTrailingWhitespace(FinalCommand);
     if (Flags & SPAWN_NOSHELL)
     {
         argv=(char **) calloc(101,sizeof(char *));
         ptr=FinalCommand;
         ptr=GetToken(FinalCommand,"\\S",&Token,GETTOKEN_QUOTES);
-        argv[0]=CopyStr(argv[0],Token);
+        ExecPath=FindFileInPath(ExecPath,Token,getenv("PATH"));
         i=0;
 
-        if (! Flags & SPAWN_ARG0)
+        if (! (Flags & SPAWN_ARG0))
         {
-            argv[1]=CopyStr(argv[1],Token);
+            argv[0]=CopyStr(argv[0],ExecPath);
             i=1;
         }
 
-        for (i=0; i < 100; i++)
+        for (; i < 100; i++)
         {
-            if (! ptr) break;
             ptr=GetToken(ptr,"\\S",&Token,GETTOKEN_QUOTES);
+            if (! ptr) break;
             argv[i]=CopyStr(argv[i],Token);
         }
-        execv(argv[0],argv);
+
+        execv(ExecPath, argv);
     }
     else result=execl("/bin/sh","/bin/sh","-c",(char *) Command,NULL);
 
     RaiseError(ERRFLAG_ERRNO, "Spawn", "Failed to execute '%s'",Command);
 //We'll never get to here unless something fails!
     DestroyString(FinalCommand);
+    DestroyString(ExecPath);
     DestroyString(Token);
 
     return(result);
@@ -90,7 +75,7 @@ pid_t xfork(const char *Config)
 }
 
 
-int xforkio(int StdIn, int StdOut, int StdErr)
+pid_t xforkio(int StdIn, int StdOut, int StdErr)
 {
     pid_t pid;
     int fd;
@@ -98,46 +83,24 @@ int xforkio(int StdIn, int StdOut, int StdErr)
     pid=xfork("");
     if (pid==0)
     {
-        if (StdIn > -1)
+        if (StdIn !=0) 
         {
-            if (StdIn !=0)
-            {
-                close(0);
-                dup(StdIn);
-            }
-        }
-        else
-        {
-            fd=open("/dev/null",O_RDONLY);
-            dup(fd);
-            close(fd);
+        		if (StdIn == -1) fd_remap_path(0, "/dev/null", O_RDONLY);	
+						else fd_remap(0, StdIn);	
         }
 
-        if (StdOut > -1)
+        if (StdOut !=1) 
         {
-            if (StdOut !=1)
-            {
-                close(1);
-                dup(StdOut);
-            }
-        }
-        else
-        {
-            fd=open("/dev/null",O_WRONLY);
-            dup(fd);
-            close(fd);
+        		if (StdOut == -1) fd_remap_path(1, "/dev/null", O_WRONLY);	
+						else fd_remap(1, StdOut);	
         }
 
-        if (StdErr > -1)
+        if (StdErr !=2) 
         {
-            if (StdErr !=2)
-            {
-                close(2);
-                dup(StdErr);
-            }
+        		if (StdErr == -1) fd_remap_path(2, "/dev/null", O_WRONLY);	
+						else fd_remap(2, StdErr);	
         }
     }
-
 
     return(pid);
 }
@@ -146,12 +109,20 @@ int xforkio(int StdIn, int StdOut, int StdErr)
 
 
 
+void InternalSwitchProgram(const char *CommandLine, const char *Config)
+{
+    int Flags;
+
+    Flags=ProcessApplyConfig(Config);
+		if (! (Flags & PROC_SETUP_FAIL)) BASIC_FUNC_EXEC_COMMAND((void *) CommandLine, Flags);
+}
+
 void SwitchProgram(const char *CommandLine, const char *Config)
 {
     int Flags;
 
     Flags=ProcessApplyConfig(Config);
-    BASIC_FUNC_EXEC_COMMAND((void *) CommandLine, SPAWN_NOSHELL|Flags);
+    if (! (Flags & PROC_SETUP_FAIL)) BASIC_FUNC_EXEC_COMMAND((void *) CommandLine, SPAWN_NOSHELL|Flags);
 }
 
 
@@ -164,40 +135,44 @@ pid_t SpawnWithIO(const char *CommandLine, const char *Config, int StdIn, int St
     pid=xforkio(StdIn,StdOut,StdErr);
     if (pid==0)
     {
-        SwitchProgram(CommandLine, Config);
+        InternalSwitchProgram(CommandLine, Config);
         _exit(pid);
     }
 
     return(pid);
 }
 
-
-int Spawn(const char *ProgName, const char *Config)
-{
-    int pid;
-
-    pid=xforkio(0,1,2);
-    if (pid==0)
-    {
-        SwitchProgram(ProgName, Config);
-        _exit(pid);
-    }
-    return(pid);
-}
 
 
 /* This creates a child process that we can talk to using a couple of pipes*/
 pid_t PipeSpawnFunction(int *infd, int *outfd, int *errfd, BASIC_FUNC Func, void *Data, const char *Config)
 {
     pid_t pid;
+		//default these to stdin, stdout and stderr and then override those later
+		int c1=0, c2=1, c3=2;
     int channel1[2], channel2[2], channel3[2], DevNull=-1;
     int Flags;
 
-    if (infd) pipe(channel1);
-    if (outfd) pipe(channel2);
-    if (errfd) pipe(channel3);
+    if (infd) 
+		{
+			pipe(channel1);
+			//this is a read channel, so pipe[0]
+			c1=channel1[0];
+		}
+    if (outfd) 
+		{
+			pipe(channel2);
+			//this is a write channel, so pipe[1]
+			c2=channel2[1];
+		}
+    if (errfd) 
+		{
+			pipe(channel3);
+			//this is a write channel, so pipe[1]
+			c3=channel3[1];
+		}
 
-    pid=xfork("");
+    pid=xforkio(c1, c2, c3);
     if (pid==0)
     {
         /* we are the child */
@@ -208,30 +183,8 @@ pid_t PipeSpawnFunction(int *infd, int *outfd, int *errfd, BASIC_FUNC Func, void
         if (errfd) close(channel3[0]);
         else if (DevNull==-1) DevNull=open("/dev/null",O_RDWR);
 
-        /*close stdin, stdout and stderr*/
-        close(0);
-        close(1);
-        close(2);
-        /*channel 1 is going to be our stdin, so we close the writing side of it*/
-        if (infd) dup(channel1[0]);
-        else dup(DevNull);
-        /* channel 2 is stdout */
-        if (outfd) dup(channel2[1]);
-        else dup(DevNull);
-        /* channel 3 is stderr */
-        if (errfd)
-        {
-            //Yes, we can pass an integer value as errfd, even though it's an int *.
-            //This is probably a bad idea, and will likely be changed in future releases
-            //if (errfd==(int *) COMMS_COMBINE_STDERR) dup(channel2[1]);
-            //else
-            dup(channel3[1]);
-        }
-        else dup(DevNull);
-
-
         Flags=ProcessApplyConfig(Config);
-        Func(Data, Flags);
+				if (! (Flags & PROC_SETUP_FAIL)) Func(Data, Flags);
         exit(0);
     }
     else // This is the parent process, not the spawned child
@@ -276,25 +229,23 @@ pid_t PseudoTTYSpawnFunction(int *ret_pty, BASIC_FUNC Func, void *Data, int Flag
 
     if (PseudoTTYGrab(&pty, &tty, Flags))
     {
-        pid=xfork("");
+        pid=xforkio(tty, tty, tty);
         if (pid==0)
         {
-            for (i=0; i < 3; i++) close(i);
             close(pty);
 
-            setsid();
+						//doesn't seem to exist under macosx!
+						#ifdef TIOCSCTTY
             ioctl(tty,TIOCSCTTY,0);
-
-            dup(tty);
-            dup(tty);
-            dup(tty);
+						#endif
+            setsid();
 
             ///now that we've dupped it, we don't need to keep it open
             //as it will be open on stdin/stdout
             close(tty);
 
             ConfigFlags=ProcessApplyConfig(Config);
-            Func((char *) Data, ConfigFlags);
+						if (! (ConfigFlags & PROC_SETUP_FAIL)) Func((char *) Data, ConfigFlags);
             _exit(0);
         }
 

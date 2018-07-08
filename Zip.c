@@ -1,6 +1,10 @@
 #include "Zip.h"
 #include "FileTypeRules.h"
-#include <wait.h>
+#include "DocumentTypes.h"
+#include "Export.h"
+#include "FileMagics.h"
+
+#include <sys/wait.h>
 
 
 /*
@@ -122,11 +126,12 @@ void ZipReadCentralFileHeader(STREAM *S, ZipCentDirHeader *Head, char **FileName
 {
     char *Tempstr=NULL;
 
-    STREAMReadBytes(S, Head, ZCDH_SIZE);
+		memset(Head,0, sizeof(ZipCentDirHeader));
+    STREAMReadBytes(S, (char *) Head, ZCDH_SIZE);
     if (Head->sig == 0x02014b50)
     {
-        STREAMReadBytes(S, &(Head->offset), sizeof(uint32_t));
-        STREAMReadBytes(S, &(Head->offset), sizeof(uint32_t));
+        STREAMReadBytes(S, (char *) &(Head->offset), sizeof(uint32_t));
+        STREAMReadBytes(S, (char *) &(Head->offset), sizeof(uint32_t));
         *FileName=SetStrLen(*FileName, Head->namelen * 2);
         memset(*FileName, 0, Head->namelen * 2);
         STREAMReadBytes(S, *FileName, Head->namelen);
@@ -186,11 +191,10 @@ void ZipFileExtract(STREAM *S, int Offset, const char *FileName, TMimeItem *Item
     TProcessingModule *Mod=NULL;
     char *Tempstr=NULL, *Decomp=NULL;
     STREAM *tmpFile;
-    int result, len;
-    long val, compressed_size, name_len, extra_len;
+    int result, zbytes;
+    unsigned long len, val, compressed_size, name_len, extra_len, bytes_read=0;
 
     STREAMSeek(S, Offset, SEEK_SET);
-
 
     STREAMReadUint32(S, &val); //sig
     STREAMReadUint16(S, &val); //min_version
@@ -204,8 +208,9 @@ void ZipFileExtract(STREAM *S, int Offset, const char *FileName, TMimeItem *Item
     STREAMReadUint16(S, &name_len); //namelen
     STREAMReadUint16(S, &extra_len); //extralen
 
+
     Tempstr=SetStrLen(Tempstr, name_len * 2);
-    STREAMReadBytes(S, Tempstr,name_len);
+    result=STREAMReadBytes(S, Tempstr,name_len);
 
     if (strcmp(Tempstr, FileName) !=0)
     {
@@ -219,25 +224,33 @@ void ZipFileExtract(STREAM *S, int Offset, const char *FileName, TMimeItem *Item
         STREAMReadBytes(S, Tempstr, extra_len);
     }
 
+
     Mod=StandardDataProcessorCreate("decompress","zlib","");
     if (Mod)
     {
-        tmpFile=STREAMOpen("tmp-XXXXXX","wt");
+        tmpFile=STREAMOpen("tmp-XXXXXX","rwt");
         if (tmpFile)
         {
             Tempstr=SetStrLen(Tempstr, BUFSIZ);
-            result=STREAMReadBytes(S, Tempstr, BUFSIZ);
-            while (result > 0)
+            while (compressed_size > bytes_read)
             {
-                len=result * 2;
+								len=compressed_size -bytes_read;
+								if (len > BUFSIZ) len=BUFSIZ;
+		  					zbytes=STREAMReadBytes(S, Tempstr, len);
+                len=zbytes * 8;
                 Decomp=SetStrLen(Decomp, len);
-                result=Mod->Read(Mod,Tempstr,result,Decomp,&len,TRUE);
-                STREAMWriteBytes(tmpFile, Decomp, len);
-                result=STREAMReadBytes(S, Tempstr, BUFSIZ);
+                result=Mod->Read(Mod, Tempstr, zbytes, &Decomp, &len, FALSE);
+                STREAMWriteBytes(tmpFile, Decomp, result);
+								if (zbytes > 0) bytes_read+=zbytes;
+								if (bytes_read > compressed_size) break;
             }
             STREAMFlush(tmpFile);
             STREAMSeek(tmpFile, 0, SEEK_SET);
+						Item->FileMagicsType=FileMagicsExamine(Item->FileMagicsType, tmpFile);
+
             DocTypeProcess(tmpFile, Item, FileName);
+						unlink(tmpFile->Path);
+						STREAMClose(tmpFile);
         }
     }
 
@@ -253,6 +266,7 @@ void ZipFileProcess(const char *Path, TMimeItem *Parent)
     char *Tempstr=NULL;
     const char *ptr;
     TMimeItem *Item;
+		size_t pos;
     int result, i;
     STREAM *S;
     ZipEOCD *Head;
@@ -272,12 +286,21 @@ void ZipFileProcess(const char *Path, TMimeItem *Parent)
             for (i=0; i < Head->recs; i++)
             {
                 ZipReadCentralFileHeader(S, &FileHead, &Tempstr);
-                if ((g_Flags & FLAG_DEBUG)) printf("         : [%s]\n",Tempstr);
-                Item=MimeItemCreate(Tempstr,"","");
-                ListAddItem(Parent->SubItems, Item);
-                if (FileHead.flags & (ZIP_ENCRYPTED | ZIP_ENCRYPTED_STRONG)) Item->RulesResult=RULE_ENCRYPTED;
-//			ZipFileExtract(S, FileHead.offset, Tempstr, Item);
-
+								if (StrValid(Tempstr))
+								{
+	                if ((Config->Flags & FLAG_DEBUG)) printf("         : [%s]\n",Tempstr);
+	                Item=MimeItemCreate(Tempstr,"","");
+	                ListAddItem(Parent->SubItems, Item);
+	                if (FileHead.flags & (ZIP_ENCRYPTED | ZIP_ENCRYPTED_STRONG)) Item->RulesResult=RULE_ENCRYPTED;
+									pos=STREAMTell(S);
+									ZipFileExtract(S, FileHead.offset, Tempstr, Item);
+									STREAMSeek(S, pos, SEEK_SET);
+								}
+								else
+								{
+					        Item->RulesResult |= RULE_MALFORMED;
+					        SetVar(Item->Errors,"malformed: Blank file name in central directory","");
+								}
             }
             Destroy(Head);
         }

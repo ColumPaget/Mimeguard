@@ -13,11 +13,14 @@ AC_SYS_LARGEFILE
 cf_have_libssl=no
 cf_have_libcrypto=no
 cf_have_libz=no
+
+cf_have_ptsname_r=no
+cf_have_setresuid=no
+cf_have_clearenv=no
+
 cf_use_simd=no
 cf_use_sendfile=no
-cf_have_ptsname_r=no
-cf_have_setxattr=no
-cf_have_getxattr=no
+cf_use_xattr=no
 
 
 AC_CHECK_LIB(c,ptsname_r,,)
@@ -26,6 +29,28 @@ if test "$cf_have_ptsname_r" = "yes"
 then
 AC_DEFINE([HAVE_PTSNAME_R])
 fi
+
+AC_CHECK_LIB(c,clearenv,,)
+cf_have_clearenv=$ac_cv_lib_c_clearenv
+if test "$cf_have_clearenv" = "yes"
+then
+AC_DEFINE([HAVE_CLEARENV])
+fi
+
+AC_CHECK_LIB(c,setresuid,,)
+cf_have_setresuid=$ac_cv_lib_c_setresuid
+if test "$cf_have_setresuid" = "yes"
+then
+AC_DEFINE([HAVE_SETRESUID])
+fi
+
+AC_CHECK_LIB(c,get_current_dir_name,,)
+cf_have_get_current_dir_name=$ac_cv_lib_c_get_current_dir_name
+if test "$cf_have_get_current_dir_name" = "yes"
+then
+AC_DEFINE([HAVE_GET_CURR_DIR])
+fi
+
 
 
 AC_CHECK_LIB(c,umount2,,)
@@ -49,13 +74,6 @@ then
 AC_DEFINE([HAVE_MKOSTEMP])
 fi
 
-AC_CHECK_LIB(c,getxattr,,)
-cf_have_getxattr=$ac_cv_lib_c_getxattr
-if test "$cf_have_getxattr" = "yes"
-then
-AC_DEFINE([HAVE_XATTR])
-fi
-
 
 
 AC_ARG_ENABLE(sendfile, [  --enable-sendfile       enable 'fastcopy' sendfile support], cf_use_sendfile=$enableval )
@@ -77,6 +95,19 @@ AC_ARG_ENABLE(ip6, [  --enable-ip6       enable IPv6 support], cf_use_ip6=$enabl
 if test "$cf_use_ip6" = "yes"
 then
 AC_DEFINE([USE_INET6],1)
+fi
+
+
+AC_ARG_ENABLE(xattr, [  --enable-xattr       enable filesystem xattr support], cf_use_xattr=$enableval )
+
+if test "$cf_use_xattr" = "yes"
+then
+AC_CHECK_LIB(c,getxattr,,)
+cf_have_getxattr=$ac_cv_lib_c_getxattr
+if test "$cf_have_getxattr" = "yes"
+then
+AC_DEFINE([HAVE_XATTR])
+fi
 fi
 
 
@@ -167,6 +198,21 @@ sse2) AC_SUBST(SIMD_CFLAGS,"-mmmx -msse -msse2");;
 esac
 
 
+cf_have_capabilities=no
+AC_ARG_ENABLE(capabilities, [  --enable-capabilities       enable linux capabilities support (default=no)], cf_use_capabilities=$enableval )
+if test "$cf_use_capabilities" != "no"
+then
+AC_CHECK_HEADER(sys/capability.h,cf_have_capabilities=yes,,)
+AC_CHECK_HEADER(linux/capability.h,cf_have_capabilities=yes,,)
+fi
+
+if test "$cf_have_capabilities" = "yes"
+then
+AC_CHECK_LIB(cap,cap_init,,)
+AC_DEFINE([USE_CAPABILITIES])
+fi
+
+
 dnl read Makefile.in and write Makefile 
 AC_OUTPUT(Makefile)
 
@@ -179,6 +225,14 @@ echo "Largefiles ( > 2GB ) enabled"
 else
 echo "Largefiles ( > 2GB ) NOT enabled"
 fi
+
+if test "$cf_have_getxattr" = "yes"
+then
+echo "Filesystem attribues (xattr) enabled"
+else
+echo "Filesystem attribues (xattr) NOT enabled"
+fi
+
 
 if test "$cf_use_sendfile" = "yes"
 then
@@ -214,5 +268,12 @@ then
 echo "linux namespace support enabled"
 else
 echo "linux namespace support NOT enabled"
+fi
+
+if test "$cf_have_capabilities" = "yes"
+then
+echo "linux capabilities support enabled"
+else
+echo "linux capabilities support NOT enabled"
 fi
 

@@ -108,7 +108,7 @@ char *RegionLookup(char *RetStr, const char *IP)
 
     Destroy(Path);
 
-    if (g_Flags & FLAG_DEBUG) printf("IPREGION: %s %s\n",IP, RetStr);
+    if (Config->Flags & FLAG_DEBUG) printf("IPREGION: %s %s\n",IP, RetStr);
     return(RetStr);
 }
 

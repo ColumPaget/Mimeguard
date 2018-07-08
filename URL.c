@@ -125,19 +125,16 @@ int URLRegionCheck(const char *Config, const char *IP, char **RegionRegistrar, c
 
 
 
-int URLRuleCheck(TMimeItem *Item, const char *URL)
+int URLRuleCheckHost(TMimeItem *Item, const char *Host)
 {
     ListNode *Curr;
-    char *Proto=NULL, *Host=NULL, *PortStr=NULL, *Doc=NULL, *IP=NULL;
-    char *RegionRegistrar=NULL, *RegionCountry=NULL;
+    char *IP=NULL, *RegionRegistrar=NULL, *RegionCountry=NULL;
     char *Tempstr=NULL;
     const char *ptr;
     int result=FALSE;
 
     if (ListSize(URLRules)==0) return(FALSE);
-    ParseURL(URL, &Proto, &Host, &PortStr, NULL, NULL, &Doc, NULL);
-    if (StrValid(Host))
-    {
+
         ptr=GetTypedVar(g_KeyValueStore, Host, KV_IP);
         if (! StrValid(ptr))
         {
@@ -147,7 +144,6 @@ int URLRuleCheck(TMimeItem *Item, const char *URL)
 
         IP=CopyStr(IP, ptr);
 
-        if (g_Flags & FLAG_DEBUG) printf("URL: %s %s\n",IP, URL);
 
         Curr=ListGetNext(URLRules);
         while (Curr)
@@ -186,11 +182,12 @@ int URLRuleCheck(TMimeItem *Item, const char *URL)
                     Tempstr=MCopyStr(Tempstr, "host ", Host, " in ", Curr->Item, NULL);
                     SetTypedVar(Item->Errors,Tempstr,"",ERROR_BASIC);
                     result=TRUE;
-                }
+										if (Config->Flags & FLAG_DEBUG) printf("URLCHECK: FOUND host %s in %s\n", Host, Curr->Item);
+								} else if (Config->Flags & FLAG_DEBUG) printf("URLCHECK: CLEAR host %s not in %s\n", Host, Curr->Item);
                 break;
 
             case WHITELIST_HOSTLIST:
-                if (InFileList(Curr->Item, URL)) result=FALSE;
+                if (InFileList(Curr->Item, Host)) result=FALSE;
                 break;
 
             case BLACKLIST_IPLIST:
@@ -199,7 +196,8 @@ int URLRuleCheck(TMimeItem *Item, const char *URL)
                     Tempstr=MCopyStr(Tempstr, "ip ", IP, " in ", Curr->Item, NULL);
                     SetTypedVar(Item->Errors,Tempstr,"",ERROR_BASIC);
                     result=TRUE;
-                }
+										if (Config->Flags & FLAG_DEBUG) printf("IP CHECK: FOUND ip %s in %s\n", IP, Curr->Item);
+								} else if (Config->Flags & FLAG_DEBUG) printf("IP CHECK: CLEAR ip %s not in %s\n", IP, Curr->Item);
                 break;
 
             case WHITELIST_IPLIST:
@@ -229,15 +227,10 @@ int URLRuleCheck(TMimeItem *Item, const char *URL)
             Item->RulesResult &= ~RULE_SAFE;
             Item->RulesResult |= RULE_EVIL | RULE_MACROS;
         }
-    }
 
     Destroy(RegionRegistrar);
     Destroy(RegionCountry);
     Destroy(Tempstr);
-    Destroy(PortStr);
-    Destroy(Proto);
-    Destroy(Host);
-    Destroy(Doc);
     Destroy(IP);
 
 
@@ -245,3 +238,22 @@ int URLRuleCheck(TMimeItem *Item, const char *URL)
 }
 
 
+int URLRuleCheck(TMimeItem *Item, const char *URL)
+{
+    char *Proto=NULL, *Host=NULL, *PortStr=NULL, *Doc=NULL;
+    int result=FALSE;
+
+    ParseURL(URL, &Proto, &Host, &PortStr, NULL, NULL, &Doc, NULL);
+    if (StrValid(Host))
+		{
+       if (Config->Flags & FLAG_DEBUG) printf("URL: %s\n", URL);
+			 result=URLRuleCheckHost(Item, Host);
+		}
+
+  Destroy(PortStr);
+  Destroy(Proto);
+  Destroy(Host);
+  Destroy(Doc);
+
+	return(result);
+}

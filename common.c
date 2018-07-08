@@ -2,15 +2,27 @@
 #include "Mime.h"
 #include <glob.h>
 
-int g_Flags=0;
+TConfig *Config=NULL;
 char *ExportPath=NULL;
 
 //nothing to see here, move along
 STREAM *g_Rewrite=NULL;
 
+
+
 //global policies map, into which we put anything that we need to
 //look up by name
 ListNode *g_KeyValueStore=NULL;
+
+
+
+void ConfigInit()
+{
+    Config=(TConfig *) calloc(1, sizeof(TConfig));
+    Config->Flags = FLAG_SHOW_SAFE | FLAG_SHOW_EVIL | FLAG_SHOW_CURR;
+    Config->SmtpAddress=CopyStr(Config->SmtpAddress, "tcp:127.0.0.1:25");
+}
+
 
 char *DecodeMailText(char *RetStr, const char *Text)
 {
