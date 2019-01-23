@@ -208,8 +208,7 @@ fi
 
 if test "$cf_have_capabilities" = "yes"
 then
-AC_CHECK_LIB(cap,cap_init,,)
-AC_DEFINE([USE_CAPABILITIES])
+AC_CHECK_LIB(cap,cap_init, AC_DEFINE([USE_CAPABILITIES]))
 fi
 
 

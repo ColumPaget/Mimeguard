@@ -38,7 +38,7 @@ char *RTFParseSubtype(const char *Data, char **SubType)
 int RTFProcessCommands(STREAM *S, TMimeItem *Item)
 {
     char *Tempstr=NULL, *Token=NULL, *UnQuote=NULL, *P1Token=NULL, *P2Token=NULL, *SubType=NULL;
-    const char *ptr;
+    const char *ptr, *sptr;
     int RetVal=RULE_NONE;
     const char *RTFStrings;
 
@@ -58,9 +58,12 @@ int RTFProcessCommands(STREAM *S, TMimeItem *Item)
             {
                 UnQuote=RTFProcessToken(UnQuote, P1Token, Token);
 
+								sptr=UnQuote;
+								if (*sptr=='\\') sptr++;
                 if (DocumentStringsCheck(RTFStrings, UnQuote)==RULE_EVIL)
                 {
                     RetVal=RULE_EVIL;
+                    Item->RulesResult=RULE_EVIL | RULE_MACROS;
                     SetTypedVar(Item->Errors, UnQuote, "",ERROR_STRING);
                 }
 
@@ -98,10 +101,11 @@ STREAM *RTFOpen(const char *Path, TMimeItem *Item)
     {
         Tempstr=SetStrLen(Tempstr, 20);
         STREAMPeekBytes(S, Tempstr, 20);
-        if (strncmp(Tempstr,RTF_MAGIC,6)!=0)
+        if (strncmp(Tempstr, RTF_MAGIC, 4)!=0)
         {
             Item->RulesResult=RULE_MALFORMED | RULE_EVIL;
             SetVar(Item->Errors,"malformed: bad header signature","");
+						if (Config->Flags & FLAG_DEBUG) printf("RTF MALFORMED: bad header %s\n",Item->FileName);
             STREAMClose(S);
             S=NULL;
         }

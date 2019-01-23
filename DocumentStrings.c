@@ -34,7 +34,11 @@ const char *ptr;
 		ptr=GetToken(List, "\\S", &Match, GETTOKEN_QUOTES);
     while (ptr)
     {
-			if (pmatch(Match,String,StrLen(String), NULL, 0)) return(RULE_EVIL);
+			if (pmatch(Match, String, StrLen(String), NULL, 0)) 
+			{
+				Destroy(Match);
+				return(RULE_EVIL);
+			}
 			ptr=GetToken(ptr, "\\S", &Match, GETTOKEN_QUOTES);
     }
 

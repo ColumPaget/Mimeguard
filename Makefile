@@ -4,7 +4,7 @@ prefix=/
 sysconfdir=${prefix}/etc
 bindir=${exec_prefix}/bin
 
-OBJ=common.o DocumentTypes.o Mime.o FileMagics.o FileExtensions.o EmailHeaders.o FileTypeRules.o Export.o DocumentStrings.o Settings.o Output.o Zip.o PDF.o RTF.o OLE.o HTML.o URL.o IPRegion.o Smtp.o libUseful-3/libUseful-3.a
+OBJ=common.o DocumentTypes.o Mime.o FileMagics.o FileExtensions.o EmailHeaders.o FileTypeRules.o Export.o DocumentStrings.o Settings.o Output.o Zip.o PDF.o RTF.o OLE.o XML.o HTML.o URL.o IPRegion.o Smtp.o libUseful-3/libUseful-3.a
 
 
 mimeguard: $(OBJ) main.c
@@ -45,6 +45,9 @@ OLE.o: OLE.h OLE.c
 
 HTML.o: HTML.h HTML.c
 	$(CC) $(FLAGS) -c HTML.c
+
+XML.o: XML.h XML.c
+	$(CC) $(FLAGS) -c XML.c
 
 URL.o: URL.h URL.c
 	$(CC) $(FLAGS) -c URL.c

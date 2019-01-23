@@ -27,16 +27,28 @@
 #define RULE_CONTAINER 524288
 #define RULE_IP 1048576
 #define RULE_IPREGION 2097152
+#define RULE_ISTEXT 4194304
 
 #define RULE_MASK (RULE_SAFE|RULE_EVIL|RULE_MISMATCH)
 
-void FileRulesAdd(const char *Type, int Flags, const char *Contains, const char *Equivalent);
+typedef struct
+{
+    int Flags;
+    char *ContentType;
+    char *Contains;
+    char *Equivalent;
+    char *Overrides;
+} TFileRule;
+
+
+TFileRule *FileRulesAdd(const char *Type, int Flags, const char *Contains, const char *Equivalent);
 void FileTypeRuleParse(const char *Data, int Flags);
 void FileExtnRuleParse(const char *Data);
 int FileRulesConsider(TMimeItem *Item);
 void FileRulesLoadPostProcess();
 void HeaderRulesConsider(TMimeItem *Item, const char *Header, const char *Value);
 const char *TranslateMimeTypeEquivalent(const char *MimeType);
+void FileRulesProcessOverrides(TMimeItem *Item);
 
 int IsItSafe(TMimeItem *Item);
 

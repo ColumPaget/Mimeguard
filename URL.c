@@ -96,10 +96,13 @@ int URLRegionCheck(const char *Config, const char *IP, char **RegionRegistrar, c
     char *Tempstr=NULL, *Token=NULL;
     int result=FALSE;
 
+		if (strcmp(Config, "*")==0) return(TRUE);
     *RegionRegistrar=CopyStr(*RegionRegistrar, "");
     *RegionCountry=CopyStr(*RegionCountry, "");
 
     Tempstr=RegionLookup(Tempstr, IP);
+		if (StrValid(Tempstr))
+		{
     ptr=GetToken(Tempstr,":",RegionRegistrar,0);
     ptr=GetToken(ptr,":",RegionCountry,0);
 
@@ -107,6 +110,7 @@ int URLRegionCheck(const char *Config, const char *IP, char **RegionRegistrar, c
     while (ptr)
     {
         if (
+            (strcasecmp(Token, Tempstr)==0) ||
             (strcasecmp(Token, *RegionRegistrar)==0) ||
             (strcasecmp(Token, *RegionCountry)==0)
         )
@@ -116,6 +120,7 @@ int URLRegionCheck(const char *Config, const char *IP, char **RegionRegistrar, c
         }
         ptr=GetToken(ptr, ",", &Token, 0);
     }
+		}
 
     Destroy(Tempstr);
     Destroy(Token);
@@ -125,13 +130,13 @@ int URLRegionCheck(const char *Config, const char *IP, char **RegionRegistrar, c
 
 
 
-int URLRuleCheckHost(TMimeItem *Item, const char *Host)
+int URLRuleCheckHost(TMimeItem *Item, const char *Host, const char *URL)
 {
     ListNode *Curr;
     char *IP=NULL, *RegionRegistrar=NULL, *RegionCountry=NULL;
     char *Tempstr=NULL;
     const char *ptr;
-    int result=FALSE;
+    int result=RULE_NONE;
 
     if (ListSize(URLRules)==0) return(FALSE);
 
@@ -155,25 +160,31 @@ int URLRuleCheckHost(TMimeItem *Item, const char *Host)
                 {
                     Tempstr=MCopyStr(Tempstr, "host ", Host, " in ", Curr->Item, NULL);
                     SetTypedVar(Item->Errors,Tempstr,"",ERROR_BASIC);
-                    result=TRUE;
+                    result=RULE_EVIL;
                 }
                 break;
 
             case WHITELIST_HOST:
-                if (pmatch(Curr->Item, Host, StrLen(Host), NULL, 0)) result=FALSE;
+                if (pmatch(Curr->Item, Host, StrLen(Host), NULL, 0)) 
+								{
+									result=RULE_SAFE;
+								}
                 break;
 
             case BLACKLIST_IP:
                 if (StrValid(IP) && pmatch(Curr->Item, IP, StrLen(IP), NULL, 0))
                 {
-                    Tempstr=MCopyStr(Tempstr, "ip ", IP, " in ", Curr->Item, NULL);
+                    Tempstr=MCopyStr(Tempstr, "ip ", IP, " in ", Curr->Item, " (", URL, ")", NULL);
                     SetTypedVar(Item->Errors,Tempstr,"",ERROR_BASIC);
-                    result=TRUE;
+                    result=RULE_EVIL;
                 }
                 break;
 
             case WHITELIST_IP:
-                if (StrValid(IP) && pmatch(Curr->Item, Host, StrLen(Host), NULL, 0)) result=FALSE;
+                if (StrValid(IP) && pmatch(Curr->Item, IP, StrLen(IP), NULL, 0)) 
+								{
+								result=RULE_SAFE;
+								}
                 break;
 
             case BLACKLIST_HOSTLIST:
@@ -181,13 +192,16 @@ int URLRuleCheckHost(TMimeItem *Item, const char *Host)
                 {
                     Tempstr=MCopyStr(Tempstr, "host ", Host, " in ", Curr->Item, NULL);
                     SetTypedVar(Item->Errors,Tempstr,"",ERROR_BASIC);
-                    result=TRUE;
+                    result=RULE_EVIL;
 										if (Config->Flags & FLAG_DEBUG) printf("URLCHECK: FOUND host %s in %s\n", Host, Curr->Item);
 								} else if (Config->Flags & FLAG_DEBUG) printf("URLCHECK: CLEAR host %s not in %s\n", Host, Curr->Item);
                 break;
 
             case WHITELIST_HOSTLIST:
-                if (InFileList(Curr->Item, Host)) result=FALSE;
+                if (InFileList(Curr->Item, Host)) 
+								{
+									result=RULE_SAFE;
+								}
                 break;
 
             case BLACKLIST_IPLIST:
@@ -195,38 +209,47 @@ int URLRuleCheckHost(TMimeItem *Item, const char *Host)
                 {
                     Tempstr=MCopyStr(Tempstr, "ip ", IP, " in ", Curr->Item, NULL);
                     SetTypedVar(Item->Errors,Tempstr,"",ERROR_BASIC);
-                    result=TRUE;
+                    result=RULE_EVIL;
 										if (Config->Flags & FLAG_DEBUG) printf("IP CHECK: FOUND ip %s in %s\n", IP, Curr->Item);
 								} else if (Config->Flags & FLAG_DEBUG) printf("IP CHECK: CLEAR ip %s not in %s\n", IP, Curr->Item);
                 break;
 
             case WHITELIST_IPLIST:
-                if (StrValid(IP) && InFileList(Curr->Item, IP)) result=FALSE;
+                if (StrValid(IP) && InFileList(Curr->Item, IP)) result=RULE_SAFE;
                 break;
 
 
             case BLACKLIST_REGION:
                 if (URLRegionCheck(Curr->Item, IP, &RegionRegistrar, &RegionCountry))
                 {
-                    result=TRUE;
-                    Tempstr=MCopyStr(Tempstr, "ip ",IP, " region ",RegionRegistrar,":",RegionCountry,NULL);
+                    result=RULE_EVIL;
+                    Tempstr=MCopyStr(Tempstr, "ip ",IP, " region ",RegionRegistrar,":",RegionCountry, " (", URL, ")", NULL);
                     SetTypedVar(Item->Errors,Tempstr,"",ERROR_BASIC);
                 }
                 break;
 
             case WHITELIST_REGION:
-                if (URLRegionCheck(Curr->Item, IP, &RegionRegistrar, &RegionCountry)) result=FALSE;
+                if (URLRegionCheck(Curr->Item, IP, &RegionRegistrar, &RegionCountry)) 
+								{
+									result=RULE_SAFE;
+								}
                 break;
             }
             Curr=ListGetNext(Curr);
         }
 
 
-        if (result)
+        if (result==RULE_EVIL)
         {
             Item->RulesResult &= ~RULE_SAFE;
             Item->RulesResult |= RULE_EVIL | RULE_MACROS;
         }
+        else if (result==RULE_SAFE)
+        {
+            Item->RulesResult &= ~(RULE_EVIL | RULE_MACROS);
+            Item->RulesResult |= RULE_SAFE;
+        }
+
 
     Destroy(RegionRegistrar);
     Destroy(RegionCountry);
@@ -247,7 +270,7 @@ int URLRuleCheck(TMimeItem *Item, const char *URL)
     if (StrValid(Host))
 		{
        if (Config->Flags & FLAG_DEBUG) printf("URL: %s\n", URL);
-			 result=URLRuleCheckHost(Item, Host);
+			 result=URLRuleCheckHost(Item, Host, URL);
 		}
 
   Destroy(PortStr);

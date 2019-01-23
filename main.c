@@ -47,12 +47,15 @@ void PrintUsage()
     printf("  %-25s %s\n","-strip", "Rewrite email files with harmful items removed");
     printf("  %-25s %s\n","-safe-dir <path>", "Move safe files to directory <path>");
     printf("  %-25s %s\n","-evil-dir <path>", "Move unsafe files to directory <path>");
+    printf("  %-25s %s\n","-no-url", "Do not perform checks on urls in document (following URLs can slow checks up a lot");
     printf("  %-25s %s\n","-show <email header>", "Show specified email header");
     printf("  %-25s %s\n","-smtp <address>", "Run in SMTP mode. <address> is an optional argument of an address/port to bind to");
     printf("  %-25s %s\n","-smtp-banner <string>", "Initial server banner when running in SMTP mode");
     printf("  %-25s %s\n","-smtp-safe   <address>", "Server to send 'safe' mails to");
     printf("  %-25s %s\n","-smtp-evil   <address>", "Server to send 'evil' mails to");
     printf("  %-25s %s\n","-smtp-dest   <address>", "Server to send all mails to");
+    printf("  %-25s %s\n","-color", "Output result info with color");
+    printf("  %-25s %s\n","-no-color", "Output result info without color");
 		printf("\n\n");
 		printf("The <address> argument to -smtp is optional. The default address is 127.0.0.1:25, meaning 'bind to port 25 on the local interface'. If <address> lacks a port then port 25 is the default.\n");
     exit(0);
@@ -81,6 +84,9 @@ ListNode *ParseCommandLine(int argc, char *argv[])
         else if (strcmp(ptr,"-safe")==0) Config->Flags &= ~(FLAG_SHOW_EVIL | FLAG_SHOW_CURR);
         else if (strcmp(ptr,"-evil")==0) Config->Flags &= ~(FLAG_SHOW_SAFE | FLAG_SHOW_CURR);
         else if (strcmp(ptr,"-strip")==0) Config->Flags |= FLAG_STRIP;
+        else if (strcmp(ptr,"-no-url")==0) Config->Flags |= FLAG_NO_URL_CHECKS;
+        else if (strcmp(ptr,"-color")==0) Config->Flags |= FLAG_COLOR;
+        else if (strcmp(ptr,"-no-color")==0) Config->Flags |= FLAG_NO_COLOR;
         else if (strcmp(ptr,"-show")==0)
         {
             Tempstr=CopyStr(Tempstr,CommandLineNext(Args));
@@ -140,14 +146,14 @@ int ProcessFile(const char *Path)
     S=STREAMOpen(Path, "r");
     if (S)
     {
-				Tempstr=MCopyStr(Tempstr, GetBasename(Path), ".stripped", NULL);
+				Tempstr=MCopyStr(Tempstr, GetBasename(Path), ".rewrite", NULL);
     		if (Config->Flags & FLAG_STRIP) g_Rewrite=STREAMOpen(Tempstr, "w");
 				else g_Rewrite=NULL;
 
         ptr=strrchr(Path, '.');
         if (ptr) ExtnType=CopyStr(ExtnType, FileExtensionLookup(ptr));
         else ExtnType=CopyStr(ExtnType,"");
-        FileMagicsType=FileMagicsExamine(FileMagicsType, S);
+        FileMagicsType=FileMagicsExamine(FileMagicsType, S, NULL);
 
         Config->ExportPath=MCopyStr(Config->ExportPath, GetBasename((char *) Path),".dump/",NULL);
 
@@ -177,7 +183,6 @@ int ProcessFile(const char *Path)
     Destroy(ExtnType);
     Destroy(FileMagicsType);
     Destroy(Tempstr);
-
 
     return(ExitVal);
 }

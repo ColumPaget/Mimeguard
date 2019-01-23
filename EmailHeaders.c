@@ -115,6 +115,7 @@ void EmailHeaderRulesConsider(TMimeItem *Item, const char *Header, const char *V
 						//These rules add filetype rules that are processed later
             if (strcasecmp(Token, "FileType")==0) FileTypeRuleParse(ptr, 0);
             if (strcasecmp(Token, "FileExtn")==0) FileExtnRuleParse(ptr);
+            if (strcasecmp(Token, "UrlRule")==0) URLParseRule(ptr);
 
 						//These rules add/override the permitted documents strings
             if (strcasecmp(Token, "string")==0)
@@ -125,6 +126,7 @@ void EmailHeaderRulesConsider(TMimeItem *Item, const char *Header, const char *V
 		
 						//source ipadddress check	
             if (strcasecmp(Token, "source")==0) EmailHeaderCheckSource(Item, ptr);
+
 
 						//show a header
             if (strcasecmp(Token, "show")==0) Node->ItemType |= RULE_ECHO;

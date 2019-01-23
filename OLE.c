@@ -253,8 +253,9 @@ void OLEProcessDirBlock(STREAM *S, int Sector, int Extract)
 
             if (StrValid(Tempstr))
             {
-                if (Config->Flags & FLAG_DEBUG) printf("STREAM: %s\n",Tempstr);
+                if (Config->Flags & FLAG_DEBUG) printf("OLE STREAM: %s\n",Tempstr);
                 if (strcmp(Tempstr,"Root Entry")==0) ParseFlags |=OLEPARSE_ROOTENTRY;
+                else if (strcmp(Tempstr,"R")==0) ParseFlags |=OLEPARSE_ROOTENTRY;
                 else if ((strcmp(Tempstr,"Macros")==0) || (strcmp(Tempstr,"VBA")==0) || (strcmp(Tempstr,"_VBA_PROJECT_CUR")==0)) ParseFlags |=OLEPARSE_MACROS;
                 else if (strcmp(Tempstr,"EncryptedPackage")==0) ParseFlags |=OLEPARSE_ENCRYPTED;
             }
@@ -289,6 +290,7 @@ STREAM *OLEFileOpen(const char *Path, TOLEHeader *Header, TMimeItem *Item)
     {
         Item->RulesResult=RULE_MALFORMED | RULE_EVIL;
         SetTypedVar(Item->Errors, "malformed: too short", "", ERROR_BASIC);
+				if (Config->Flags & FLAG_DEBUG) printf("OLE MALFORMED: too short %s\n",Item->FileName);
         return(NULL);
     }
 
@@ -296,12 +298,21 @@ STREAM *OLEFileOpen(const char *Path, TOLEHeader *Header, TMimeItem *Item)
     S=STREAMFileOpen(Path, SF_RDONLY);
     if (! S) return(NULL);
 
+		Item->FileMagicsType=FileMagicsExamine(Item->FileMagicsType, S, &Item->Flags);
+		if (strcmp(Item->FileMagicsType, "application/rtf")==0)
+		{
+        STREAMClose(S);
+        return(NULL);
+		}
+
     STREAMReadBytes(S, (char *) Header, sizeof(TOLEHeader));
+		if (Config->Flags & FLAG_DEBUG) printf("HEADER: [%s] %s\n",Header, Item->FileName);
 
     if (memcmp(Header->FileSig, OLE_MAGIC, 8) !=0)
     {
         Item->RulesResult=RULE_MALFORMED | RULE_EVIL;
         SetTypedVar(Item->Errors, "malformed: bad header signature", "", ERROR_BASIC);
+				if (Config->Flags & FLAG_DEBUG) printf("OLE MALFORMED: bad header signature %s\n",Item->FileName);
         STREAMClose(S);
         return(NULL);
     }
@@ -313,6 +324,7 @@ STREAM *OLEFileOpen(const char *Path, TOLEHeader *Header, TMimeItem *Item)
     {
         Item->RulesResult=RULE_MALFORMED | RULE_EVIL;
         SetTypedVar(Item->Errors, "malformed: sector size too small", "", ERROR_BASIC);
+				if (Config->Flags & FLAG_DEBUG) printf("OLE MALFORMED: sector size too small %s\n",Item->FileName);
         STREAMClose(S);
         return(NULL);
     }
@@ -339,6 +351,11 @@ int OLEFileProcess(const char *Path, TMimeItem *Item)
     Item->RulesResult=RULE_SAFE;
     if ((Config->Flags & FLAG_DEBUG)) printf("Check OLE: [%s]\n",Path);
     S=OLEFileOpen(Path, &Header, Item);
+		if (strcmp(Item->FileMagicsType, "application/rtf")==0)
+		{
+			if (S) STREAMClose(S);
+			return(Item->RulesResult);
+		}
 
     if (S)
     {

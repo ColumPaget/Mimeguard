@@ -4510,15 +4510,9 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_cap_cap_init" >&5
 $as_echo "$ac_cv_lib_cap_cap_init" >&6; }
 if test "x$ac_cv_lib_cap_cap_init" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBCAP 1
-_ACEOF
-
-  LIBS="-lcap $LIBS"
+  $as_echo "#define USE_CAPABILITIES 1" >>confdefs.h
 
 fi
-
-$as_echo "#define USE_CAPABILITIES 1" >>confdefs.h
 
 fi
 

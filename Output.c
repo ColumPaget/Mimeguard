@@ -61,6 +61,15 @@ char *OutputItemErrors(char *RetStr, TMimeItem *Item)
     return(RetStr);
 }
 
+
+int OutputUseColor()
+{
+if (Config->Flags & FLAG_COLOR) return(TRUE);
+if (Config->Flags & FLAG_NO_COLOR) return(FALSE);
+return(isatty(1));
+}
+
+
 void OutputItem(TMimeItem *Top, TMimeItem *Item, int Level, int Safe)
 {
     ListNode *Curr;
@@ -78,7 +87,7 @@ void OutputItem(TMimeItem *Top, TMimeItem *Item, int Level, int Safe)
     {
         if (Item->RulesResult & RULE_EVIL)
         {
-            if (isatty(1))
+            if (OutputUseColor())
             {
                 p_startANSI=ANSICode(ANSI_RED, ANSI_NONE, 0);
                 p_endANSI=ANSI_NORM;
@@ -87,7 +96,7 @@ void OutputItem(TMimeItem *Top, TMimeItem *Item, int Level, int Safe)
         }
         else if (Item->RulesResult & RULE_SAFE)
         {
-            if (isatty(1))
+            if (OutputUseColor())
             {
                 p_startANSI=ANSICode(ANSI_GREEN, ANSI_NONE, 0);
                 p_endANSI=ANSI_NORM;
@@ -96,7 +105,7 @@ void OutputItem(TMimeItem *Top, TMimeItem *Item, int Level, int Safe)
         }
         else if (Item->RulesResult & RULE_MISMATCH)
         {
-            if (isatty(1))
+            if (OutputUseColor())
             {
                 p_startANSI=ANSICode(ANSI_MAGENTA, ANSI_NONE, 0);
                 p_endANSI=ANSI_NORM;
@@ -105,7 +114,7 @@ void OutputItem(TMimeItem *Top, TMimeItem *Item, int Level, int Safe)
         }
         else if (Item->RulesResult & RULE_CONTAINER)
         {
-            if (isatty(1))
+            if (OutputUseColor())
             {
                 p_startANSI=ANSICode(ANSI_BLUE, ANSI_NONE, 0);
                 p_endANSI=ANSI_NORM;
@@ -119,6 +128,7 @@ void OutputItem(TMimeItem *Top, TMimeItem *Item, int Level, int Safe)
     if (Show)
     {
         if (Level==0) OutputHeaders(Top);
+				if (Item->Flags & MIMEFLAG_ISTEXT) Additional=CatStr(Additional, " (istext) ");
         Additional=OutputItemErrors(Additional, Item);
         printf("%s %s%s%s content=%s magic=%s extn=%s   %s %s\n",p_Status, Prefix, p_startANSI, Item->FileName, Item->ContentType, Item->FileMagicsType, Item->ExtnType, Additional, p_endANSI);
 

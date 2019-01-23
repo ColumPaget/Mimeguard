@@ -19,6 +19,7 @@ ListNode *Errors;
 } TMimeItem;
 
 #define MIMEFLAG_ROOT 1
+#define MIMEFLAG_ISTEXT 2
 #define MIMEFLAG_QUOTEDPRINTABLE 32
 #define MIMEFLAG_BASE64 64
 

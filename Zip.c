@@ -216,6 +216,7 @@ void ZipFileExtract(STREAM *S, int Offset, const char *FileName, TMimeItem *Item
     {
         Item->RulesResult |= RULE_MALFORMED;
         SetVar(Item->Errors,"malformed: local file name doesn't match directory header","");
+        if (Config->Flags & FLAG_DEBUG) printf("malformed: local file name doesn't match directory header\n");
     }
 
     if (extra_len > 0)
@@ -246,9 +247,9 @@ void ZipFileExtract(STREAM *S, int Offset, const char *FileName, TMimeItem *Item
             }
             STREAMFlush(tmpFile);
             STREAMSeek(tmpFile, 0, SEEK_SET);
-						Item->FileMagicsType=FileMagicsExamine(Item->FileMagicsType, tmpFile);
+						Item->FileMagicsType=FileMagicsExamine(Item->FileMagicsType, tmpFile, &Item->Flags);
 
-            DocTypeProcess(tmpFile, Item, FileName);
+            DocTypeProcess(tmpFile, Item, tmpFile->Path);
 						unlink(tmpFile->Path);
 						STREAMClose(tmpFile);
         }
@@ -278,16 +279,19 @@ void ZipFileProcess(const char *Path, TMimeItem *Parent)
         Head=ZipReadCentralDirectory(S);
         if (! Head)
         {
-            Parent->RulesResult=RULE_MALFORMED;
+//            Parent->RulesResult=RULE_MALFORMED;
             SetVar(Parent->Errors,"malformed: cannot read zip directory","");
+            if (Config->Flags & FLAG_DEBUG) printf("malformed: cannot read zip directory\n");
         }
         else
         {
             for (i=0; i < Head->recs; i++)
             {
                 ZipReadCentralFileHeader(S, &FileHead, &Tempstr);
-								if (StrValid(Tempstr))
+								if (StrValid(Tempstr) )
 								{
+									if  (FileHead.compressed_size > 0)
+									{
 	                if ((Config->Flags & FLAG_DEBUG)) printf("         : [%s]\n",Tempstr);
 	                Item=MimeItemCreate(Tempstr,"","");
 	                ListAddItem(Parent->SubItems, Item);
@@ -295,11 +299,13 @@ void ZipFileProcess(const char *Path, TMimeItem *Parent)
 									pos=STREAMTell(S);
 									ZipFileExtract(S, FileHead.offset, Tempstr, Item);
 									STREAMSeek(S, pos, SEEK_SET);
+									}
 								}
 								else
 								{
 					        Item->RulesResult |= RULE_MALFORMED;
-					        SetVar(Item->Errors,"malformed: Blank file name in central directory","");
+            			SetVar(Item->Errors,"malformed: Blank file name in central directory", "");
+									if (Config->Flags & FLAG_DEBUG) printf("malformed: Blank file name in central directory\n");
 								}
             }
             Destroy(Head);

@@ -154,6 +154,7 @@ void FileMagicsLoadDefaults()
     FileMagicsAdd("Rar!", "application/x-rar-compressed");
     FileMagicsAdd("<html", "text/html");
     FileMagicsAdd("<HTML", "text/html");
+    FileMagicsAdd("<?xml", "application/xml");
     FileMagicsAdd(OLE_MAGIC, "application/x-ole-storage");
     FileMagicsAdd(RTF_MAGIC, "application/rtf");
     FileMagicsAdd("{\\\\rt", "application/rtf");
@@ -179,15 +180,33 @@ const char *FileMagicsLookupContentType(char *Data)
 }
 
 
+int FileMagicsIsText(const char *Data)
+{
+		const char *ptr;
+		int IsText=TRUE;
 
-char *FileMagicsExamine(char *RetStr, STREAM *S)
+		for (ptr=Data; *ptr !='\0'; ptr++)
+		{
+			if ( ((*ptr < 32) || (*ptr > 127)) && (*ptr != '\n') && (*ptr != '\r') ) IsText=FALSE;
+		}
+			
+		return(IsText);
+}
+
+
+char *FileMagicsExamine(char *RetStr, STREAM *S, int *Flags)
 {
     char *Tempstr=NULL;
+		int result;
 
-    Tempstr=SetStrLen(Tempstr, 255);
-    STREAMPeekBytes(S,Tempstr,255);
+    Tempstr=SetStrLen(Tempstr, 256);
+    result=STREAMPeekBytes(S,Tempstr,255);
+		if (result > 0) Tempstr[result]='\0';
+		else Tempstr[0]='\0';
 
     RetStr=CopyStr(RetStr, FileMagicsLookupContentType(Tempstr));
+		if (Flags && FileMagicsIsText(Tempstr)) *Flags |= MIMEFLAG_ISTEXT;
+	
 
     Destroy(Tempstr);
 

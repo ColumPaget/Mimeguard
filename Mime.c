@@ -26,8 +26,13 @@ TMimeItem *MimeItemCreate(const char *FileName, const char *ContentType, const c
     if (StrValid(FileName))
     {
         ptr=strrchr(FileName, '.');
-        if (ptr) Item->ExtnType=CopyStr(Item->ExtnType, FileExtensionLookup(ptr));
+        if (ptr) 
+				{
+					Item->ExtnType=CopyStr(Item->ExtnType, FileExtensionLookup(ptr));
+					if (! StrValid(Item->ContentType)) Item->ContentType=CopyStr(Item->ContentType, Item->ExtnType);
+				}
     }
+		
 
     return(Item);
 }
@@ -208,7 +213,6 @@ TMimeItem *MimeReadHeaders(STREAM *S, int CopyToRewrite)
     Tempstr=MimeHeaderReadLine(Tempstr, S);
     while (! StrValid(Tempstr))
     {
-
         if (! Tempstr) return(NULL);
         Tempstr=MimeHeaderReadLine(Tempstr, S);
     }
@@ -287,10 +291,17 @@ STREAM *MimeReadDocument(STREAM *S, TMimeItem *Item, const char *Boundary, char 
 
         result=DecodeDocumentLine(Tempstr, Item->Flags & MIMEFLAG_ENCODING, &Data);
 
-				if (lines==0) Item->FileMagicsType=CopyStr(Item->FileMagicsType, FileMagicsLookupContentType(Data));
+				//if this is the first line of then do FileMagic detection on it
+				if (lines==0) 
+				{
+				Item->FileMagicsType=CopyStr(Item->FileMagicsType, FileMagicsLookupContentType(Data));
+				if (FileMagicsIsText(Data)) Item->Flags |=MIMEFLAG_ISTEXT;
+				}
+
         lines++;
         if (Doc && (result > 0))
         {
+						if (! FileMagicsIsText(Data)) Item->Flags &= ~MIMEFLAG_ISTEXT;
             STREAMWriteBytes(Doc, Data, result);
         }
 

@@ -1,8 +1,10 @@
 # MIMEGUARD
 
-This is a utility that attempts to provide a 'firewall' for mail files. It allows the user to create policies governing which files are allowed within mails. It can also analyze OLE documents for macros, PDF documents for javascript or embedded files, and RTF documents for embedded files. I created it after seeing too many virus-checkers allow files ending in extensions like .exe, .js, .bat, and so on, or word documents containing macros, or whatever.
+This is a utility that attempts to provide a 'firewall' for mail files. It allows the user to create policies governing which files are allowed within mails. It can also analyze OLE documents for macros, PDF documents for javascript or embedded files, RTF documents for embedded files, and HTML documents for various untrusted URLs. I created it after seeing too many virus-checkers allow files ending in extensions like .exe, .js, .bat, and so on, or word documents containing macros, or whatever.
 
 Mimeguard is intended to process email files, returning 'true' (exit code 0) if the file passes all checks, and 'false' (some non-zero exit code) if it fails a check. It's designed to be run from a script that takes actions on the basis of these exit codes. It also prints out a report of which files it passed/failed as it runs.
+
+Mimeguard reads documents and determines three mime-type values. Firstly there's 'content-type' which is the mime-type that a document claims to be, for instance when email headers claim that the email body, or an attachment, is 'text/html'. Next is 'extn-type' which is the mime-type implied by the file extension of the document (if it has one). Finally there's 'magic-type' which is the mime-type implied by the first few bytes of the file (which is usually a 'magic value' identifying the file type). Mimeguard checks these three types. If these don't match then the document is considered 'evil', otherwise checking continues to a number of configurable tests. At the end of these tests the document will be considered 'evil' or 'safe' and the program exits with a return value (zero for safe, non-zero otherwise).
 
 I have been using mimeguard and getting good results with it for some time now, but it still has some missing features. Please read the section 'WEAKNESSES AND TODO' before using this software.
 
@@ -124,7 +126,7 @@ urlrule iplist /etc/netspork/badips.blocklist evil
 Binds a list of file extensions to a particular mime-type, overriding information from the apache mime.types file.
 
 **FileType <mime type> <commands>**
-This config does most of the work. The 'mime type' argument is an fnmatch style pattern that matches against a mime type. For a given pattern one can supply the arguments 'safe', 'evil', 'container', 'contains', and 'equiv'. 'safe' and 'evil' are equivalent to 'ACCEPT' and 'REJECT' in an iptables firewall. mimeguard will return '0' (which is 'true' in bash scripts) if a file and all its contained files are declared 'safe'. If will return various non-zero values (all of which count as 'false') if the file, or any of it's contents, match against an 'evil' rule. For example:
+This config does most of the work. The 'mime type' argument is an fnmatch style pattern that matches against a mime type. For a given pattern one can supply the arguments 'safe', 'evil', 'istext', 'container', 'contains', 'override' and 'equiv'. 'safe' and 'evil' are equivalent to 'ACCEPT' and 'REJECT' in an iptables firewall. mimeguard will return '0' (which is 'true' in bash scripts) if a file and all its contained files are declared 'safe'. If will return various non-zero values (all of which count as 'false') if the file, or any of it's contents, match against an 'evil' rule. For example:
 
 ```
 FileType * evil
@@ -162,7 +164,7 @@ FileType multipart/alternative safe
 
 Later rules override previous ones, so all multipart documents will be treated as containers except multipart/alternative.
 
-Finally there are a couple of other benign mime-types that can appear in emails:
+There are a couple of other benign mime-types that can appear in emails:
 
 ```
 FileType * evil
@@ -174,6 +176,17 @@ FileType application/ms-tnef safe
 ```
 
 With this set of rules mimeguard will only return 'true' if an email file contains documents with 'text/*' mimetypes.
+
+We can apply a strict test that the document actually is plain text with the 'istext' attribute. This checks each byte in the document to see that it's in the range of plain text characters (no control characters etc). So now we have:
+
+```
+FileType * evil
+FileType text/* istext safe
+FileType multipart/* container safe
+FileType multipart/alternative safe
+FileType message/rfc822 safe
+FileType application/ms-tnef safe
+```
 
 The 'container' argument allows specifying that a mime-type is a container for other documents. If you want to constrain which mime-types can appear within a container you can use the 'contains' argument, like this:
 
@@ -190,6 +203,17 @@ FileType application/zip safe container
 ```
 
 The 'equiv' keyword forwards processing to the 'FileType application/zip' configuration. Notice that we've also had to add a line saying that 'application/zip' is a safe format and a container. The 'container' keyword triggers mimeguard's container evaluation, which knows how to look inside zip documents. 
+
+
+The 'override' keyword functions like equiv, but instead of forwarding us to another rule, it actually changes the mime-type of the item being processed. This is useful for situations where the content-type of an item doesn't match its magic or file extension. For instance, an email could declare that a document is 'application/vnd.ms-excel' when its file extension is '.csv/ instead of '.xls' and its contents are actually 'application/csv'. We can fix this with a line like:
+
+```
+FileType */csv istext override=application/vnd.ms-excel safe
+```
+
+This line says for any item that is plain text, and whose extension or file magic matches '*/csv' but the declared content-type is 'application/vnd.ms-excel' change the content-type match the extension or file magic type. 
+
+
 
 Finally, we can replace 'container' with 'contains' if we want to constrain what can appear in a zip file, like this:
 
@@ -403,9 +427,9 @@ FileType message/rfc822 safe
 FileType application/ms-tnef safe
 FileType multipart/* safe container
 FileType multipart/alternative safe
-FileType */xml safe
-FileType */csv safe
-FileType text/* safe
+FileType */xml istext safe
+FileType */csv istext safe
+FileType text/* istext safe
 FileType audio/* safe
 FileType video/* safe
 

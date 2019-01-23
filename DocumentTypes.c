@@ -4,14 +4,19 @@
 #include "RTF.h"
 #include "OLE.h"
 #include "HTML.h"
+#include "XML.h"
 #include "FileTypeRules.h"
 
 int DocTypeMatch(TMimeItem *Item, const char *MatchType)
 {
     const char *ptr;
 
-    if (strcasecmp(MatchType, Item->ContentType)==0) return(TRUE);
+		if (StrValid(Item->FileMagicsType))
+		{
     if (strcasecmp(MatchType, Item->FileMagicsType)==0) return(TRUE);
+		}
+
+    if (strcasecmp(MatchType, Item->ContentType)==0) return(TRUE);
     if (strcasecmp(MatchType, Item->ExtnType)==0) return(TRUE);
 
     ptr=TranslateMimeTypeEquivalent(Item->ContentType);
@@ -36,6 +41,7 @@ int DocTypeProcess(STREAM *Doc, TMimeItem *Item, const char *Path)
 
     if (! Item) return(RetVal);
 
+
     TmpPath=CopyStr(TmpPath, Path);
 
     //if the root document is not a multipart mail then we'll have to export it first
@@ -43,6 +49,8 @@ int DocTypeProcess(STREAM *Doc, TMimeItem *Item, const char *Path)
     {
         if (StrEnd(Item->ContentType)) Doc=MimeReadDocument(Doc, Item, "", &TmpPath);
     }
+
+		FileRulesProcessOverrides(Item);
 
 
     if (
@@ -68,6 +76,10 @@ int DocTypeProcess(STREAM *Doc, TMimeItem *Item, const char *Path)
     {
         HTMLFileProcess(TmpPath, Item);
     }
+    else if (DocTypeMatch(Item,"application/xml")) 
+		{
+        XMLFileProcess(TmpPath, Item);
+		}
     else if (
         (DocTypeMatch(Item,"multipart/mixed")) ||
         (DocTypeMatch(Item,"multipart/alternative")) ||

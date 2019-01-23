@@ -5,11 +5,13 @@
 
 char *HTMLReformatURL(char *RetStr, const char *URL)
 {
-    const char *ptr;
+    char *ptr;
     STREAM *S;
 
     RetStr=CopyStr(RetStr, URL);
-    return(RetStr);
+
+		ptr=strrchr(RetStr, '?');
+		if (ptr) *ptr='\0';
 
 //get past 'http://'. Then if there's no '/' ending the URL then add one
     ptr=strchr(RetStr, ':');
@@ -22,13 +24,14 @@ char *HTMLReformatURL(char *RetStr, const char *URL)
 
     if (! strchr(ptr, '/')) RetStr=CatStr(RetStr, "/");
 		
-
+/*
     S=STREAMOpen(URL,"r");
     if (S)
     {
         RetStr=CopyStr(RetStr, STREAMGetValue(S, "HTTP:URL"));
         STREAMClose(S);
     }
+*/
 
     return(RetStr);
 }
@@ -56,8 +59,10 @@ TMimeItem *HTMLAddURLSubItem(TMimeItem *Parent, const char *URL)
 
 int HTMLTagWithURL(TMimeItem *Item, const char *TagData)
 {
-    char *Name=NULL, *Value=NULL, *Tempstr=NULL;
+    char *Name=NULL, *Value=NULL, *Tempstr=NULL, *Proto=NULL;
+		const char *IgnoreProtos[]={"mailto","x-msg","cid",NULL};
     const char *ptr;
+		
 
     ptr=GetNameValuePair(TagData, "\\S", "=", &Name, &Value);
     while (ptr)
@@ -65,12 +70,12 @@ int HTMLTagWithURL(TMimeItem *Item, const char *TagData)
         if ((strcasecmp(Name,"href")==0) || (strcasecmp(Name,"src")==0))
         {
             Tempstr=HTMLReformatURL(Tempstr, Value);
-
+						GetToken(Tempstr, ":", &Proto, 0);
             //Don't consider mailto URLs
-            if (strncmp(Tempstr,"mailto:",7) !=0)
+            if (MatchTokenFromList(Proto, IgnoreProtos, 0)==-1)
             {
-                if (Config->Flags & FLAG_DEBUG) printf("URL: %s\n",Value);
-                URLRuleCheck(Item, Tempstr);
+                if (Config->Flags & FLAG_DEBUG) printf("URL: %s\n", Tempstr);
+                if (! (Config->Flags & FLAG_NO_URL_CHECKS)) URLRuleCheck(Item, Tempstr);
                 HTMLAddURLSubItem(Item, Tempstr);
             }
         }
@@ -95,10 +100,16 @@ int HTMLProcess(STREAM *S, TMimeItem *Item)
     while (Line)
     {
         StripTrailingWhitespace(Line);
-        Tempstr=CatStr(Tempstr, Line);
+				if (Item->Flags & MIMEFLAG_BASE64) 
+				{
+					DecodeBytes(&TagData, Line, ENCODE_BASE64);
+        	Tempstr=CatStr(Tempstr, TagData);
+				}
+        else Tempstr=CatStr(Tempstr, Line);
         if (S->State & SS_EMBARGOED) exit(1);
         Line=STREAMReadLine(Line, S);
     }
+
 
     ptr=XMLGetTag(Tempstr, NULL, &TagName, &TagData);
     while (ptr)

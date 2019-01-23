@@ -4,7 +4,7 @@
 #include "common.h"
 #include "Mime.h"
 
-#define RTF_MAGIC "{\\\\rtf1"
+#define RTF_MAGIC "{\\rt"
 
 int RTFFileProcess(const char *Path, TMimeItem *Parent);
 

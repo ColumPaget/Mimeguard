@@ -76,12 +76,18 @@ void FileExtensionsLoad(const char *Path)
 const char *FileExtensionLookup(const char *Extn)
 {
     const char *ptr;
+		char *Tempstr=NULL;
 
     if ((! Extn) || (*Extn=='\0')) return("");
     ptr=Extn;
     if (*ptr=='.') ptr++;
+	
+		Tempstr=CopyStr(Tempstr, ptr);	
+		strlwr(Tempstr);
+    ptr=GetTypedVar(g_KeyValueStore, Tempstr, KV_FILE_EXTN);
+		Destroy(Tempstr);
 
-    return(GetTypedVar(g_KeyValueStore, ptr, KV_FILE_EXTN));
+		return(ptr);
 }
 
 
