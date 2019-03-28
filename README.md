@@ -27,7 +27,7 @@ Should work. The 'make install' stage will have to be done as root. The default 
 
 Please supply `--enable-zlib` if your system has this library, as this will enable mimeguard to look deeper into PDF documents. 
 
-If you have installed libuseful system-wide, and it's version 4.0 or higher, then `--with-libuseful=yes` will cause mimeguard to link against the system version of libUseful. If this can't be found, or the option isn't provided, then mimeguard will link against the bundled version supplied within the Mimeguard source code.
+If you have installed libuseful system-wide, and it's version 3.0 or higher, then `--with-libuseful=yes` will cause mimeguard to link against the system version of libUseful. If this can't be found, or the option isn't provided, then mimeguard will link against the bundled version supplied within the Mimeguard source code.
 
 
 # INVOCATION
