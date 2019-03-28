@@ -280,6 +280,7 @@ STREAM *MimeReadDocument(STREAM *S, TMimeItem *Item, const char *Boundary, char 
     fd=ExportOpen(Item, SavePath);
     if (fd > -1) Doc=STREAMFromFD(fd);
 
+		Item->Flags |= MIMEFLAG_DECODED;
     Tempstr=STREAMReadLine(Tempstr, S);
     while (Tempstr)
     {

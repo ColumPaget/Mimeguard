@@ -2,7 +2,7 @@
 
 This is a utility that attempts to provide a 'firewall' for mail files. It allows the user to create policies governing which files are allowed within mails. It can also analyze OLE documents for macros, PDF documents for javascript or embedded files, RTF documents for embedded files, and HTML documents for various untrusted URLs. I created it after seeing too many virus-checkers allow files ending in extensions like .exe, .js, .bat, and so on, or word documents containing macros, or whatever.
 
-Mimeguard is intended to process email files, returning 'true' (exit code 0) if the file passes all checks, and 'false' (some non-zero exit code) if it fails a check. It's designed to be run from a script that takes actions on the basis of these exit codes. It also prints out a report of which files it passed/failed as it runs.
+Mimeguard is intended to process email files, returning 'true' (exit code 0) if the file passes all checks, and 'false' (some non-zero exit code, can be set using the 'exit' configure option) if it fails a check. It's designed to be run from a script that takes actions on the basis of these exit codes. It also prints out a report of which files it passed/failed as it runs.
 
 Mimeguard reads documents and determines three mime-type values. Firstly there's 'content-type' which is the mime-type that a document claims to be, for instance when email headers claim that the email body, or an attachment, is 'text/html'. Next is 'extn-type' which is the mime-type implied by the file extension of the document (if it has one). Finally there's 'magic-type' which is the mime-type implied by the first few bytes of the file (which is usually a 'magic value' identifying the file type). Mimeguard checks these three types. If these don't match then the document is considered 'evil', otherwise checking continues to a number of configurable tests. At the end of these tests the document will be considered 'evil' or 'safe' and the program exits with a return value (zero for safe, non-zero otherwise).
 
@@ -18,15 +18,16 @@ Mimeguard is free software and comes with no warranties or guarentees of any kin
 The usual proceedure:
 
 ```
-./configure --enable-zlib
+./configure --enable-zlib --with-libuseful=yes
 make
 make install
 ```
 
 Should work. The 'make install' stage will have to be done as root. The default install paths will put the mimeguard exectuable in /usr/local/bin and the default config file /usr/local/etc. This can be changed by passing `--prefix=<path>` to configure. If, like most people, you want to put mimeguard in /usr/bin but the config file in /etc then use `--prefix=/usr --sysconfdir=/etc`
 
-Please supply '--enable-zlib' if your system has this library, as this will enable mimeguard to look deeper into PDF documents.
+Please supply `--enable-zlib` if your system has this library, as this will enable mimeguard to look deeper into PDF documents. 
 
+If you have installed libuseful system-wide, and it's version 4.0 or higher, then `--with-libuseful=yes` will cause mimeguard to link against the system version of libUseful. If this can't be found, or the option isn't provided, then mimeguard will link against the bundled version supplied within the Mimeguard source code.
 
 
 # INVOCATION
@@ -87,8 +88,8 @@ http://ftp.arin.net/pub/stats/arin/delegated-arin-extended-latest","delegated-ar
 http://ftp.afrinic.net/pub/stats/afrinic/delegated-afrinic-latest","delegated-afrinic-latest
 http://ftp.apnic.net/stats/apnic/delegated-apnic-latest","delegated-apnic-latest
 
-**URLRule <result> <type> <arg>**
-A rule defining behavior to take on a URL being discovered in an HTML file. `<type>` defines the type of checking to take place. `<result>` can have the values 'safe' and 'evil'. The `<arg>` value is dependant on the type of checking.
+**URLRule <result> <type> <arg> <options>**
+A rule defining behavior to take on a URL being discovered in an HTML file. `<type>` defines the type of checking to take place. `<result>` can have the values 'safe' and 'evil'. The `<arg>` value is dependant on the type of checking. The `<options>` value is a list of extra settings or actions that trigger on this match.
 
 available `<type>` values are: 
 
@@ -97,6 +98,13 @@ available `<type>` values are:
    * iplist   `<arg>` is a path to a file containing a list of IP addresses
    * hostlist `<arg>` is a path to a file containing a list of hostnames
    * region   `<arg>` is either a registrar name (arin, ripencc, afrinic, apnic, lacnic) or a country code (GB, DE, US, RU, CN, etc).
+
+available `<options>` values are:
+
+	* exit=`<exit val>`        Set the exit value of mimeguard if this rule is matched.
+	* equiv=`<mime-type>`      Jump to rule for `<mime-type>` for further processing.
+	* override=`<mime-type>`   Set the mime type of this item to be the override type, and continue processing.
+	* contains=`<mime-types>`  Specify file types that this file can contain (for zip files etc).
 
 URLRules are processed in order. If no matching rule is found then the url is taken to be 'safe'. If you want a default 'evil' rule then start your rules with:
 
@@ -122,8 +130,23 @@ urlrule region DE safe
 urlrule iplist /etc/netspork/badips.blocklist evil
 ```
 
+urlrules can also take the 'exit' option, which is used to specify an exit-code to be returned when the program exits. This can be used to sort 'evil' mail into different types. For instance, the line:
+
+```
+urlrule host *.su evil exit=4
+```
+
+Will set the exit code to '4' for mails containing urls from the '.su' (Soviet Union) top-level domain (yes, on the internet the Soviet Union still exists, and this orphaned domain is laxly administered and is therefore popular with various types of spammer and cybercrime. So long as no later rule overrides this exit-code, the program will return '4' on exit, allowing the calling/parent program to process this mail differently than other mail.
+
+Beware that if mimeguard is run against multiple files/mails, and one of them matches an exit rule, the exit value will be returned for all the mails collectively. Thus the exit rule is most useful when checking one mail at a atime.
+
+The 'exit' rule can also be used with 'FileType' rules, (see below).
+
+
+
 **Extn <mime type> <extn> ...**
 Binds a list of file extensions to a particular mime-type, overriding information from the apache mime.types file.
+
 
 **FileType <mime type> <commands>**
 This config does most of the work. The 'mime type' argument is an fnmatch style pattern that matches against a mime type. For a given pattern one can supply the arguments 'safe', 'evil', 'istext', 'container', 'contains', 'override' and 'equiv'. 'safe' and 'evil' are equivalent to 'ACCEPT' and 'REJECT' in an iptables firewall. mimeguard will return '0' (which is 'true' in bash scripts) if a file and all its contained files are declared 'safe'. If will return various non-zero values (all of which count as 'false') if the file, or any of it's contents, match against an 'evil' rule. For example:
@@ -214,14 +237,25 @@ FileType */csv istext override=application/vnd.ms-excel safe
 This line says for any item that is plain text, and whose extension or file magic matches '*/csv' but the declared content-type is 'application/vnd.ms-excel' change the content-type match the extension or file magic type. 
 
 
-
-Finally, we can replace 'container' with 'contains' if we want to constrain what can appear in a zip file, like this:
+The 'contains' keyword constrains what can appear in a zip file or other container, like this:
 
 ```
 FileType application/zip safe contains=*,!application/zip,!application/msword
 ```
 
-The '!' before the mime-type in the 'contains' statement says that these mimetypes may not occur in the file. Because we are specifying that these may not occur, we have to include the '*' mimetype to say that anything other than these can occur in the container. Thus this line specifies that .zip files may not contain other zip files.
+The '!' before the mime-type in the 'contains' statement says that these mimetypes may not occur in the file. Because we are specifying that these may not occur, we have to include the '\*' mimetype to say that anything other than these can occur in the container. Thus this line specifies that .zip files may not contain other zip files.
+
+The 'contains' option implies the 'container' option, so this can be ommitted for containers where 'contains' is already used/
+
+Finally the 'exit' option can be used to signal to the calling/parent program that different action should be taken for a specific mail, like this:
+
+
+```
+FileType application/rar evil exit=3
+```
+
+But remember that if mimeguard is run against multiple files/mails, and one of them matches an exit rule, the exit value will be returned for all the mails collectively. Thus the exit rule is most useful when checking one mail at a atime.
+
 
 **String <mime type> <string> ...**
 The 'String' config allows us to specify a list of strings that may *not* occur in files of a particular mime-type. Currently this option only works for .rtf and .pdf files. With this option one can outlaw certain commands in those files. For example:
@@ -380,9 +414,9 @@ Notice the use of a double backslash before objocx. This is needed because backs
 
 # WEAKNESSES AND TODO
 
-This is the initial release of mimeguard, and it has some failings. These are things I plan to fix at some future date:
+Mimeguard still has some failings, particularly concerning obscure container types. These are things I plan to fix at some future date:
 
-   * Mimeguard doesn't have support for .rar or .ace container files
+   * Mimeguard doesn't have support for looking inside .rar or .ace container files
    * Mimeguard doesn't unpack ASCII85 encoded data within .pdf files.
    * Mimeguard SMTP server doesn't use containers/namespaces/chroot etc to harden against malicious actors.
 

@@ -4,6 +4,7 @@
 
 TConfig *Config=NULL;
 char *ExportPath=NULL;
+int EvilExitStatus=1; //default exit status if a mail is found to have a problem
 
 //nothing to see here, move along
 STREAM *g_Rewrite=NULL;

@@ -36,6 +36,7 @@ extern TConfig *Config;
 
 extern STREAM *g_Rewrite;
 extern ListNode *g_KeyValueStore;
+extern int EvilExitStatus;
 
 void ConfigInit();
 char *DecodeMailText(char *RetStr, const char *Text);

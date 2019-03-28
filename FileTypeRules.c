@@ -54,6 +54,7 @@ TFileRule *FileRulesAdd(const char *MimeType, int Flags, const char *Contains, c
 void FileTypeRuleParse(const char *Data, int Flags)
 {
     char *Match=NULL, *Equiv=NULL, *Contains=NULL, *Overrides=NULL, *Token=NULL;
+		int ExitVal=0;
 		TFileRule *Rule;
     const char *ptr;
 
@@ -76,6 +77,7 @@ void FileTypeRuleParse(const char *Data, int Flags)
         if (strcasecmp(Token,"allow-encrypted")==0) Flags |= RULE_ALLOW_ENCRYPTED;
         if (strncasecmp(Token,"equiv=",6)==0) Equiv=CopyStr(Equiv, Token+6);
         if (strncasecmp(Token,"override=",9)==0) Overrides=CopyStr(Overrides, Token+9);
+        if (strncasecmp(Token,"exit=",5)==0) ExitVal=atoi(Token+5);
         if (strncasecmp(Token,"contains=",9)==0)
         {
             Contains=CopyStr(Contains, Token+9);
@@ -88,7 +90,11 @@ void FileTypeRuleParse(const char *Data, int Flags)
     }
 
     Rule=FileRulesAdd(Match, Flags, Contains, Equiv);
-		if (Rule) Rule->Overrides=CopyStr(Rule->Overrides, Overrides);
+		if (Rule) 
+		{
+			Rule->Overrides=CopyStr(Rule->Overrides, Overrides);
+			Rule->ExitVal=ExitVal;
+		}
 
     Destroy(Token);
     Destroy(Equiv);
@@ -427,7 +433,11 @@ int FileRulesConsider(TMimeItem *Item)
         val=FileRulesProcessRule(Rule, Item);
 
         //if we got a rule that says 'evil' then set that
-        if (val & RULE_EVIL) Item->RulesResult |= (val & ~RULE_SAFE);
+        if (val & RULE_EVIL) 
+				{
+					Item->RulesResult |= (val & ~RULE_SAFE);
+					if (Rule->ExitVal > 0) EvilExitStatus=Rule->ExitVal;
+				}
         else if ((val & RULE_SAFE) && (! (Item->RulesResult & (RULE_MALFORMED | RULE_MACROS | RULE_ENCRYPTED | RULE_IP | RULE_IPREGION)))) Item->RulesResult=RULE_SAFE;
 
 

@@ -100,12 +100,14 @@ int HTMLProcess(STREAM *S, TMimeItem *Item)
     while (Line)
     {
         StripTrailingWhitespace(Line);
-				if (Item->Flags & MIMEFLAG_BASE64) 
+
+				if ((Item->Flags & MIMEFLAG_BASE64) && (! (Item->Flags & MIMEFLAG_DECODED)))
 				{
 					DecodeBytes(&TagData, Line, ENCODE_BASE64);
         	Tempstr=CatStr(Tempstr, TagData);
 				}
         else Tempstr=CatStr(Tempstr, Line);
+
         if (S->State & SS_EMBARGOED) exit(1);
         Line=STREAMReadLine(Line, S);
     }

@@ -3,64 +3,75 @@
 #include "IPRegion.h"
 
 
+typedef struct 
+{
+int Type;
+int Flags;
+int ExitVal;
+char *Argument;
+} TURLRule;
+
+
 typedef enum {BLACKLIST_HOST, WHITELIST_HOST, BLACKLIST_IP, WHITELIST_IP, BLACKLIST_HOSTLIST, WHITELIST_HOSTLIST, BLACKLIST_IPLIST, WHITELIST_IPLIST, BLACKLIST_REGION, WHITELIST_REGION} EURLRuleTypes;
 
 ListNode *URLRules=NULL;
 
 
-void URLRuleAdd(int Type, const char *Arg)
-{
-    if (! URLRules) URLRules=ListCreate();
-    ListAddTypedItem(URLRules, Type, "", CopyStr(NULL, Arg));
-}
 
-
-void URLParseRule(const char *Rule)
+void URLParseRule(const char *Declare)
 {
-    int Type=-1, SafeEvil=-1;
-    char *Match=NULL, *Token=NULL, *Argument=NULL;
+    int SafeEvil=-1;
+    char *MatchTypeStr=NULL, *Token=NULL;
     const char *ptr;
+		TURLRule *Rule;
 
-    ptr=GetToken(Rule,"\\S", &Match, GETTOKEN_QUOTES);
-    ptr=GetToken(ptr,"\\S", &Argument, GETTOKEN_QUOTES);
+		Rule=(TURLRule *) calloc(1, sizeof(TURLRule));
+    ptr=GetToken(Declare,"\\S", &MatchTypeStr, GETTOKEN_QUOTES);
+    ptr=GetToken(ptr,"\\S", &Rule->Argument, GETTOKEN_QUOTES);
     ptr=GetToken(ptr,"\\S", &Token, GETTOKEN_QUOTES);
+		while (ptr)
+		{
+		if (strcasecmp(Token, "safe")==0) Rule->Flags |= RULE_SAFE;
+		if (strncasecmp(Token, "exit=", 5)==0) Rule->ExitVal=atoi(Token+5);
+		
+    ptr=GetToken(ptr,"\\S", &Token, GETTOKEN_QUOTES);
+		}
 
-    if (strcasecmp(Match, "ip")==0)
+    if (strcasecmp(MatchTypeStr, "ip")==0)
     {
-        if (strcasecmp(Token,"safe")==0) Type=WHITELIST_IP;
-        else Type=BLACKLIST_IP;
+        if (SafeEvil==RULE_SAFE) Rule->Type=WHITELIST_IP;
+        else Rule->Type=BLACKLIST_IP;
     }
-    else if (strcasecmp(Match,"host")==0)
+    else if (strcasecmp(MatchTypeStr,"host")==0)
     {
-        if (strcasecmp(Token,"safe")==0) Type=WHITELIST_HOST;
-        else Type=BLACKLIST_HOST;
+        if (SafeEvil==RULE_SAFE) Rule->Type=WHITELIST_HOST;
+        else Rule->Type=BLACKLIST_HOST;
     }
-    else if (strcasecmp(Match, "iplist")==0)
+    else if (strcasecmp(MatchTypeStr, "iplist")==0)
     {
-        if (strcasecmp(Token,"safe")==0) Type=WHITELIST_IPLIST;
-        else Type=BLACKLIST_IPLIST;
+        if (SafeEvil==RULE_SAFE) Rule->Type=WHITELIST_IPLIST;
+        else Rule->Type=BLACKLIST_IPLIST;
     }
-    else if (strcasecmp(Match,"hostlist")==0)
+    else if (strcasecmp(MatchTypeStr,"hostlist")==0)
     {
-        if (strcasecmp(Token,"safe")==0) Type=WHITELIST_HOSTLIST;
-        else Type=BLACKLIST_HOSTLIST;
+        if (SafeEvil==RULE_SAFE) Rule->Type=WHITELIST_HOSTLIST;
+        else Rule->Type=BLACKLIST_HOSTLIST;
     }
-    else if (strcasecmp(Match,"region")==0)
+    else if (strcasecmp(MatchTypeStr,"region")==0)
     {
-        if (strcasecmp(Token,"safe")==0) Type=WHITELIST_REGION;
-        else Type=BLACKLIST_REGION;
+        if (SafeEvil==RULE_SAFE) Rule->Type=WHITELIST_REGION;
+        else Rule->Type=BLACKLIST_REGION;
     }
 
+    if (! URLRules) URLRules=ListCreate();
+    ListAddItem(URLRules, Rule);
 
-    URLRuleAdd(Type, Argument);
-
-    Destroy(Argument);
+    Destroy(MatchTypeStr);
     Destroy(Token);
-    Destroy(Match);
 }
 
 
-int InFileList(const char *Path, const char *Item)
+static int InFileList(const char *Path, const char *Item)
 {
     STREAM *S;
     char *Tempstr=NULL, *Token=NULL;
@@ -90,7 +101,7 @@ int InFileList(const char *Path, const char *Item)
 }
 
 
-int URLRegionCheck(const char *Config, const char *IP, char **RegionRegistrar, char **RegionCountry)
+static int URLRegionCheck(const char *Config, const char *IP, char **RegionRegistrar, char **RegionCountry)
 {
     const char *ptr;
     char *Tempstr=NULL, *Token=NULL;
@@ -130,13 +141,14 @@ int URLRegionCheck(const char *Config, const char *IP, char **RegionRegistrar, c
 
 
 
-int URLRuleCheckHost(TMimeItem *Item, const char *Host, const char *URL)
+static int URLRuleCheckHost(TMimeItem *Item, const char *Host, const char *URL)
 {
     ListNode *Curr;
     char *IP=NULL, *RegionRegistrar=NULL, *RegionCountry=NULL;
     char *Tempstr=NULL;
     const char *ptr;
-    int result=RULE_NONE;
+    int result=RULE_NONE, ExitVal=0;
+		TURLRule *Rule;
 
     if (ListSize(URLRules)==0) return(FALSE);
 
@@ -153,83 +165,89 @@ int URLRuleCheckHost(TMimeItem *Item, const char *Host, const char *URL)
         Curr=ListGetNext(URLRules);
         while (Curr)
         {
-            switch (Curr->ItemType)
+					Rule=(TURLRule *) Curr->Item;
+            switch (Rule->Type)
             {
             case BLACKLIST_HOST:
-                if (pmatch(Curr->Item, Host, StrLen(Host), NULL, 0))
+                if (pmatch(Rule->Argument, Host, StrLen(Host), NULL, 0))
                 {
-                    Tempstr=MCopyStr(Tempstr, "host ", Host, " in ", Curr->Item, NULL);
+                    Tempstr=MCopyStr(Tempstr, "host ", Host, " in ", Rule->Argument, NULL);
                     SetTypedVar(Item->Errors,Tempstr,"",ERROR_BASIC);
                     result=RULE_EVIL;
+										if (Rule->ExitVal > 0) ExitVal=Rule->ExitVal;
                 }
                 break;
 
             case WHITELIST_HOST:
-                if (pmatch(Curr->Item, Host, StrLen(Host), NULL, 0)) 
+                if (pmatch(Rule->Argument, Host, StrLen(Host), NULL, 0)) 
 								{
 									result=RULE_SAFE;
 								}
                 break;
 
             case BLACKLIST_IP:
-                if (StrValid(IP) && pmatch(Curr->Item, IP, StrLen(IP), NULL, 0))
+                if (StrValid(IP) && pmatch(Rule->Argument, IP, StrLen(IP), NULL, 0))
                 {
-                    Tempstr=MCopyStr(Tempstr, "ip ", IP, " in ", Curr->Item, " (", URL, ")", NULL);
+                    Tempstr=MCopyStr(Tempstr, "ip ", IP, " in ", Rule->Argument, " (", URL, ")", NULL);
                     SetTypedVar(Item->Errors,Tempstr,"",ERROR_BASIC);
                     result=RULE_EVIL;
+										if (Rule->ExitVal > 0) ExitVal=Rule->ExitVal;
                 }
                 break;
 
             case WHITELIST_IP:
-                if (StrValid(IP) && pmatch(Curr->Item, IP, StrLen(IP), NULL, 0)) 
+                if (StrValid(IP) && pmatch(Rule->Argument, IP, StrLen(IP), NULL, 0)) 
 								{
 								result=RULE_SAFE;
 								}
                 break;
 
             case BLACKLIST_HOSTLIST:
-                if (InFileList(Curr->Item, Host))
+                if (InFileList(Rule->Argument, Host))
                 {
-                    Tempstr=MCopyStr(Tempstr, "host ", Host, " in ", Curr->Item, NULL);
+                    Tempstr=MCopyStr(Tempstr, "host ", Host, " in ", Rule->Argument, NULL);
                     SetTypedVar(Item->Errors,Tempstr,"",ERROR_BASIC);
                     result=RULE_EVIL;
-										if (Config->Flags & FLAG_DEBUG) printf("URLCHECK: FOUND host %s in %s\n", Host, Curr->Item);
-								} else if (Config->Flags & FLAG_DEBUG) printf("URLCHECK: CLEAR host %s not in %s\n", Host, Curr->Item);
+										if (Rule->ExitVal > 0) ExitVal=Rule->ExitVal;
+										if (Config->Flags & FLAG_DEBUG) printf("URLCHECK: FOUND host %s in %s\n", Host, Rule->Argument);
+								} else if (Config->Flags & FLAG_DEBUG) printf("URLCHECK: CLEAR host %s not in %s\n", Host, Rule->Argument);
                 break;
 
             case WHITELIST_HOSTLIST:
-                if (InFileList(Curr->Item, Host)) 
+                if (InFileList(Rule->Argument, Host)) 
 								{
 									result=RULE_SAFE;
 								}
                 break;
 
             case BLACKLIST_IPLIST:
-                if (StrValid(IP) && InFileList(Curr->Item, IP))
+                if (StrValid(IP) && InFileList(Rule->Argument, IP))
                 {
-                    Tempstr=MCopyStr(Tempstr, "ip ", IP, " in ", Curr->Item, NULL);
+                    Tempstr=MCopyStr(Tempstr, "ip ", IP, " in ", Rule->Argument, NULL);
                     SetTypedVar(Item->Errors,Tempstr,"",ERROR_BASIC);
                     result=RULE_EVIL;
-										if (Config->Flags & FLAG_DEBUG) printf("IP CHECK: FOUND ip %s in %s\n", IP, Curr->Item);
-								} else if (Config->Flags & FLAG_DEBUG) printf("IP CHECK: CLEAR ip %s not in %s\n", IP, Curr->Item);
+										if (Rule->ExitVal > 0) ExitVal=Rule->ExitVal;
+										if (Config->Flags & FLAG_DEBUG) printf("IP CHECK: FOUND ip %s in %s\n", IP, Rule->Argument);
+								} else if (Config->Flags & FLAG_DEBUG) printf("IP CHECK: CLEAR ip %s not in %s\n", IP, Rule->Argument);
                 break;
 
             case WHITELIST_IPLIST:
-                if (StrValid(IP) && InFileList(Curr->Item, IP)) result=RULE_SAFE;
+                if (StrValid(IP) && InFileList(Rule->Argument, IP)) result=RULE_SAFE;
                 break;
 
 
             case BLACKLIST_REGION:
-                if (URLRegionCheck(Curr->Item, IP, &RegionRegistrar, &RegionCountry))
+                if (URLRegionCheck(Rule->Argument, IP, &RegionRegistrar, &RegionCountry))
                 {
                     result=RULE_EVIL;
+										if (Rule->ExitVal > 0) ExitVal=Rule->ExitVal;
                     Tempstr=MCopyStr(Tempstr, "ip ",IP, " region ",RegionRegistrar,":",RegionCountry, " (", URL, ")", NULL);
                     SetTypedVar(Item->Errors,Tempstr,"",ERROR_BASIC);
                 }
                 break;
 
             case WHITELIST_REGION:
-                if (URLRegionCheck(Curr->Item, IP, &RegionRegistrar, &RegionCountry)) 
+                if (URLRegionCheck(Rule->Argument, IP, &RegionRegistrar, &RegionCountry)) 
 								{
 									result=RULE_SAFE;
 								}
@@ -243,6 +261,7 @@ int URLRuleCheckHost(TMimeItem *Item, const char *Host, const char *URL)
         {
             Item->RulesResult &= ~RULE_SAFE;
             Item->RulesResult |= RULE_EVIL | RULE_MACROS;
+						if (ExitVal > 0) EvilExitStatus=ExitVal;
         }
         else if (result==RULE_SAFE)
         {

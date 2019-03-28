@@ -34,6 +34,7 @@
 typedef struct
 {
     int Flags;
+		int ExitVal;
     char *ContentType;
     char *Contains;
     char *Equivalent;

@@ -97,6 +97,7 @@ int PDFProcessSubType(TMimeItem *Item, const char *Data)
 int PDFProcessStream(STREAM *S, const char *PDFStrings, ListNode *FoundStrings)
 {
     char *Tempstr=NULL, *Compressed=NULL, *Decompressed=NULL;
+		const char *ptr;
     int total=0, len;
     int RetVal=RULE_NONE;
 
@@ -104,12 +105,17 @@ int PDFProcessStream(STREAM *S, const char *PDFStrings, ListNode *FoundStrings)
     len=STREAMReadBytesToTerm(S, Tempstr,BUFSIZ,'\n');
     while (len > 0)
     {
-        Tempstr[len]='\0';
-        if (strncmp(Tempstr,"endstream\r",10)==0)
+
+        Compressed=realloc(Compressed, (total+len) *2);
+        memcpy(Compressed+total,Tempstr,len);
+        total+=len;
+
+        ptr=memmem(Compressed, total, "endstream", 9);
+				if (ptr)
         {
-            len=DeCompressBytes(&Decompressed, "zlib", Compressed, total);
+            len=DeCompressBytes(&Decompressed, "zlib", Compressed, ptr-Compressed);
             if (PDFProcessChunk(S, Decompressed, PDFStrings, FoundStrings)==RULE_EVIL) RetVal=RULE_EVIL;
-            if (PDFProcessChunk(S, Tempstr+10, PDFStrings, FoundStrings)==RULE_EVIL) RetVal=RULE_EVIL;
+            if (PDFProcessChunk(S, ptr+10, PDFStrings, FoundStrings)==RULE_EVIL) RetVal=RULE_EVIL;
 
             Destroy(Decompressed);
             Destroy(Compressed);
@@ -118,9 +124,6 @@ int PDFProcessStream(STREAM *S, const char *PDFStrings, ListNode *FoundStrings)
             return(RetVal);
         }
 
-        Compressed=realloc(Compressed, (total+len) *2);
-        memcpy(Compressed+total,Tempstr,len);
-        total+=len;
 
         len=STREAMReadBytesToTerm(S, Tempstr,BUFSIZ,'\n');
     }

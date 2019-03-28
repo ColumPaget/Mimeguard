@@ -47,15 +47,15 @@ void PrintUsage()
     printf("  %-25s %s\n","-strip", "Rewrite email files with harmful items removed");
     printf("  %-25s %s\n","-safe-dir <path>", "Move safe files to directory <path>");
     printf("  %-25s %s\n","-evil-dir <path>", "Move unsafe files to directory <path>");
-    printf("  %-25s %s\n","-no-url", "Do not perform checks on urls in document (following URLs can slow checks up a lot");
     printf("  %-25s %s\n","-show <email header>", "Show specified email header");
+		printf("  %-25s %s\n","-no-url", "Do not perform checks on urls in document (following URLs can slow checks up a lot");
+		printf("  %-25s %s\n","-color", "Output result info with color");
+		printf("  %-25s %s\n","-no-color", "Output result info without color");
     printf("  %-25s %s\n","-smtp <address>", "Run in SMTP mode. <address> is an optional argument of an address/port to bind to");
     printf("  %-25s %s\n","-smtp-banner <string>", "Initial server banner when running in SMTP mode");
     printf("  %-25s %s\n","-smtp-safe   <address>", "Server to send 'safe' mails to");
     printf("  %-25s %s\n","-smtp-evil   <address>", "Server to send 'evil' mails to");
     printf("  %-25s %s\n","-smtp-dest   <address>", "Server to send all mails to");
-    printf("  %-25s %s\n","-color", "Output result info with color");
-    printf("  %-25s %s\n","-no-color", "Output result info without color");
 		printf("\n\n");
 		printf("The <address> argument to -smtp is optional. The default address is 127.0.0.1:25, meaning 'bind to port 25 on the local interface'. If <address> lacks a port then port 25 is the default.\n");
     exit(0);
@@ -267,7 +267,8 @@ int main(int argc, char *argv[])
     if (Config->Flags & FLAG_SMTP) ExitVal=SmtpServer(Config->SmtpAddress);
     else ExitVal=ProcessDocuments(Docs);
 
-    if (ExitVal & RULE_EVIL) exit(1);
+		//the order of these is important, in case both RULE_EVIL and RULE_SAFE are set
+    if (ExitVal & RULE_EVIL) exit(EvilExitStatus);
     if (ExitVal & RULE_SAFE) exit(0);
     if (ExitVal==RULE_NONE) exit(2);
     exit(3);
