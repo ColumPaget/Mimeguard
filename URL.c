@@ -76,8 +76,11 @@ static int InFileList(const char *Path, const char *Item)
     STREAM *S;
     char *Tempstr=NULL, *Token=NULL;
     const char *ptr;
+		int result=FALSE;
 
     S=STREAMOpen(Path, "r");
+		if (S)
+		{
     Tempstr=STREAMReadLine(Tempstr, S);
     while (Tempstr)
     {
@@ -86,18 +89,18 @@ static int InFileList(const char *Path, const char *Item)
         ptr=GetToken(Tempstr, "\\S", &Token, 0);
         if (strcmp(Token, Item)==0)
         {
-            Destroy(Tempstr);
-            Destroy(Token);
-            return(TRUE);
+					result=TRUE;
+					break;
         }
         Tempstr=STREAMReadLine(Tempstr, S);
     }
     STREAMClose(S);
+		}
 
     Destroy(Tempstr);
     Destroy(Token);
 
-    return(FALSE);
+    return(result);
 }
 
 

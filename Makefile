@@ -1,7 +1,7 @@
 FLAGS=-g -O2 -DPACKAGE_NAME=\"\" -DPACKAGE_TARNAME=\"\" -DPACKAGE_VERSION=\"\" -DPACKAGE_STRING=\"\" -DPACKAGE_BUGREPORT=\"\" -DPACKAGE_URL=\"\" -DSTDC_HEADERS=1 -D_FILE_OFFSET_BITS=64 -DHAVE_LIBSSL=1 -DHAVE_LIBCRYPTO=1 -DHAVE_LIBZ=1
 LIBS=-lm -lz -lcrypto -lssl 
-prefix=/
-sysconfdir=${prefix}/etc
+prefix=/usr/local
+sysconfdir=/etc
 bindir=${exec_prefix}/bin
 
 OBJ=common.o DocumentTypes.o Mime.o FileMagics.o FileExtensions.o EmailHeaders.o FileTypeRules.o Export.o DocumentStrings.o Settings.o Output.o Zip.o PDF.o RTF.o OLE.o XML.o HTML.o URL.o IPRegion.o Smtp.o libUseful-3/libUseful-3.a
