@@ -12,7 +12,7 @@
 #include "DocumentTypes.h"
 #include "Smtp.h"
 
-#define VERSION "4.1"
+#define VERSION "4.2"
 char *ConfigPath=NULL;
 
 
