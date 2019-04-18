@@ -5,57 +5,67 @@
 #define STATE_NONE 0
 #define STATE_STREAM 1
 
-#define PDF_SEPARATORS " |[|]|\n|\r|<<|>>|/"
+#define PDF_SEPARATORS " |[|]|\n|\r|<<|>>|/|)"
 
 //Gets called recursively
-int PDFProcessChunk(STREAM *S, const char *Chunk, const char *PDFStrings, ListNode *FoundStrings);
+static int PDFProcessChunk(STREAM *S, const char *Chunk, const char *PDFStrings, TMimeItem *Item);
+
+
+static char *PDFUnHex(char *UnQuote, const char *Token, int startlen)
+{
+static char *HexStr=NULL;
+const char *ptr;
+int len=startlen;
+
+if (! HexStr) HexStr=SetStrLen(HexStr, 3);
+HexStr[2]='\0';
+
+for (ptr=Token; *ptr!='\0' ; ptr++)
+{
+   if (*ptr=='#')
+   {
+       ptr++;
+       HexStr[0]=*ptr;
+       ptr++;
+       HexStr[1]=*ptr;
+       UnQuote=AddCharToBuffer(UnQuote,len,strtol(HexStr,NULL,16) & 0xFF);
+   }
+   else UnQuote=AddCharToBuffer(UnQuote,len, *ptr);
+   len++;
+}
+
+if ((Config->Flags & FLAG_DEBUG) && StrValid(HexStr)) printf("HEX: [%s] [%s]\n",Token, UnQuote);
+
+//don't do this, is static!
+//Destroy(HexStr);
+
+return(UnQuote);
+}
 
 
 //processes one token from the stream. As '/' counts as a token to the tokenizer, but
 //commands in PDF have the form '/Command' so we prepend the previous token. If it's a '/' it'll
 //give the full command string
 
-int PDFProcessToken(const char *PrevToken, const char *Token, const char *PDFStrings, ListNode *FoundStrings)
+static int PDFProcessToken(const char *Token, const char *PDFStrings, TMimeItem *Item)
 {
-    char *HexStr=NULL, *UnQuote=NULL;
-    const char *ptr;
-    int len=0, LineLen;
+    char *URL=NULL;
     int RetVal=RULE_NONE;
 
-    HexStr=SetStrLen(HexStr, 3);
-    HexStr[2]='\0';
-    if (strcmp(PrevToken,"/")==0)
-    {
-        UnQuote=AddCharToBuffer(UnQuote,len,'/');
-        len++;
-    }
+		if (strncmp(Token, "/URI(", 5)==0) 
+		{
+			URLRuleCheck(Item, Token+5);
+		}
 
-    for (ptr=Token; *ptr!='\0' ; ptr++)
-    {
-        if (*ptr=='#')
-        {
-            ptr++;
-            HexStr[0]=*ptr;
-            ptr++;
-            HexStr[1]=*ptr;
-            UnQuote=AddCharToBuffer(UnQuote,len,strtol(HexStr,NULL,16) & 0xFF);
-        }
-        else UnQuote=AddCharToBuffer(UnQuote,len, *ptr);
-        len++;
-    }
-
-    if ((Config->Flags & FLAG_DEBUG) && StrValid(HexStr)) printf("HEX: [%s] [%s]\n",Token, UnQuote);
-
-    RetVal=DocumentStringsCheck(PDFStrings, UnQuote);
+    RetVal=DocumentStringsCheck(PDFStrings, Token);
     if (RetVal==RULE_EVIL)
     {
         RetVal=RULE_EVIL;
-        SetTypedVar(FoundStrings, UnQuote, "", ERROR_STRING);
-        if (Config->Flags & FLAG_DEBUG) printf("Illegal String: %s\n",UnQuote);
+        SetTypedVar(Item->Errors, Token, "", ERROR_STRING);
+        if (Config->Flags & FLAG_DEBUG) printf("Illegal String: %s\n",Token);
     }
 
-    Destroy(UnQuote);
-    Destroy(HexStr);
+    Destroy(URL);
 
     return(RetVal);
 }
@@ -64,7 +74,7 @@ int PDFProcessToken(const char *PrevToken, const char *Token, const char *PDFStr
 
 
 
-int PDFProcessSubType(TMimeItem *Item, const char *Data)
+static int PDFProcessSubType(TMimeItem *Item, const char *Data)
 {
     char *Token=NULL, *Token2=NULL, *SubType=NULL;
     const char *ptr;
@@ -94,7 +104,7 @@ int PDFProcessSubType(TMimeItem *Item, const char *Data)
 
 
 
-int PDFProcessStream(STREAM *S, const char *PDFStrings, ListNode *FoundStrings)
+static int PDFProcessStream(STREAM *S, const char *PDFStrings, TMimeItem *Item)
 {
     char *Tempstr=NULL, *Compressed=NULL, *Decompressed=NULL;
 		const char *ptr;
@@ -114,8 +124,8 @@ int PDFProcessStream(STREAM *S, const char *PDFStrings, ListNode *FoundStrings)
 				if (ptr)
         {
             len=DeCompressBytes(&Decompressed, "zlib", Compressed, ptr-Compressed);
-            if (PDFProcessChunk(S, Decompressed, PDFStrings, FoundStrings)==RULE_EVIL) RetVal=RULE_EVIL;
-            if (PDFProcessChunk(S, ptr+10, PDFStrings, FoundStrings)==RULE_EVIL) RetVal=RULE_EVIL;
+            if (PDFProcessChunk(S, Decompressed, PDFStrings, Item)==RULE_EVIL) RetVal=RULE_EVIL;
+            if (PDFProcessChunk(S, ptr+10, PDFStrings, Item)==RULE_EVIL) RetVal=RULE_EVIL;
 
             Destroy(Decompressed);
             Destroy(Compressed);
@@ -135,15 +145,14 @@ int PDFProcessStream(STREAM *S, const char *PDFStrings, ListNode *FoundStrings)
 }
 
 
-int PDFProcessChunk(STREAM *S, const char *Chunk, const char *PDFStrings, ListNode *FoundStrings)
+static int PDFProcessChunk(STREAM *S, const char *Chunk, const char *PDFStrings, TMimeItem *Item)
 {
-    char *Token=NULL, *P1Token=NULL, *P2Token=NULL;
+    char *Token=NULL, *UnQuote=NULL, *PrevToken=NULL;
+    int RetVal=RULE_NONE, len=0;
     const char *ptr;
-    int RetVal=RULE_NONE;
 
 //so we don't have to check for NULL later
-    P1Token=CopyStr(P1Token,"");
-    P2Token=CopyStr(P2Token,"");
+    PrevToken=CopyStr(PrevToken,"");
 
     if (Config->Flags & FLAG_DEBUG) printf("%s",Chunk);
     ptr=GetToken(Chunk, PDF_SEPARATORS, &Token, GETTOKEN_MULTI_SEPARATORS| GETTOKEN_INCLUDE_SEP);
@@ -154,35 +163,49 @@ int PDFProcessChunk(STREAM *S, const char *Chunk, const char *PDFStrings, ListNo
         if (strcmp(Token,"stream")==0)
         {
             Token=CopyStr(Token,"");
-            if (PDFProcessStream(S, PDFStrings, FoundStrings)==RULE_EVIL) RetVal=RULE_EVIL;
+            if (PDFProcessStream(S, PDFStrings, Item)==RULE_EVIL) RetVal=RULE_EVIL;
             ptr=NULL;
         }
         else if (strcmp(Token,"endstream")==0) break;
 
+
         if (StrValid(Token))
         {
+				 	if (strcmp(PrevToken,"/")==0)
+ 		   		{
+ 	   		    UnQuote=CopyStr(UnQuote, "/");
+						UnQuote=PDFUnHex(UnQuote, Token, 1);
+    			}
+					else UnQuote=PDFUnHex(UnQuote, Token, 0);
+
+					if (strncmp(UnQuote, "/URI(", 5)==0)
+					{
+						ptr=GetToken(ptr, ")", &Token, 0);
+						UnQuote=PDFUnHex(UnQuote, Token, StrLen(UnQuote));
+					}
+
+
             //This not only unquotes any hex quoted strings, but also adds the '/' token
             //back onto the string if the string is a command in the form: /Command
-            if (PDFProcessToken(P1Token, Token, PDFStrings, FoundStrings)==RULE_EVIL) RetVal=RULE_EVIL;
+            if (PDFProcessToken(UnQuote, PDFStrings, Item)==RULE_EVIL) RetVal=RULE_EVIL;
             //if ((strcmp(UnQuote,"/Subtype")==0) && PDFProcessSubType(Item, ptr)) RetVal=RULE_EVIL;
         }
 
         //P1 and P2 tokens are Previous tokens, used to recombine things like '/' onto a string
-        P2Token=CopyStr(P2Token,P1Token);
-        P1Token=CopyStr(P1Token,Token);
+        PrevToken=CopyStr(PrevToken,Token);
         ptr=GetToken(ptr, PDF_SEPARATORS, &Token, GETTOKEN_MULTI_SEPARATORS | GETTOKEN_INCLUDE_SEP);
     }
 
     Destroy(Token);
-    Destroy(P1Token);
-    Destroy(P2Token);
+    Destroy(PrevToken);
+    Destroy(UnQuote);
 
     return(RetVal);
 }
 
 
 
-int PDFProcessCommands(STREAM *S, TMimeItem *Item)
+static int PDFProcessCommands(STREAM *S, TMimeItem *Item)
 {
     char *Tempstr=NULL;
     //P1 and P2 tokens are Previous tokens, used to recombine things like '/' onto a string
@@ -196,7 +219,7 @@ int PDFProcessCommands(STREAM *S, TMimeItem *Item)
     while (len > 0)
     {
         Tempstr[len]='\0';
-        if (PDFProcessChunk(S, Tempstr, PDFStrings, Item->Errors)==RULE_EVIL) RetVal=RULE_EVIL;
+        if (PDFProcessChunk(S, Tempstr, PDFStrings, Item)==RULE_EVIL) RetVal=RULE_EVIL;
         len=STREAMReadBytesToTerm(S, Tempstr,BUFSIZ,'\n');
     }
 
@@ -214,7 +237,7 @@ int PDFFileProcess(const char *Path, TMimeItem *Item)
     char *Tempstr=NULL;
     STREAM *S;
 
-    if ((Config->Flags & FLAG_DEBUG)) printf("Check PDF: [%s]\n",Path);
+    if (Config->Flags & FLAG_DEBUG) printf("Check PDF: [%s]\n",Path);
     S=STREAMFileOpen(Path, SF_RDONLY);
     if (S)
     {

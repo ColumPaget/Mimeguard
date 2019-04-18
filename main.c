@@ -90,9 +90,13 @@ ListNode *ParseCommandLine(int argc, char *argv[])
         else if (strcmp(ptr,"-show")==0)
         {
             Tempstr=CopyStr(Tempstr,CommandLineNext(Args));
+						if (strcasecmp(Tempstr, "url")==0) Config->Flags |= FLAG_SHOWURL;
+						else
+						{
             strrep(Tempstr,',', '|');
             strrep(Tempstr,' ', '|');
 						EmailHeaderRulesAdd(Tempstr, "*", "show");
+						}
         }
         else if (strcmp(ptr,"-smtp")==0)
         {

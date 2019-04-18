@@ -291,8 +291,8 @@ int URLRuleCheck(TMimeItem *Item, const char *URL)
     ParseURL(URL, &Proto, &Host, &PortStr, NULL, NULL, &Doc, NULL);
     if (StrValid(Host))
 		{
-       if (Config->Flags & FLAG_DEBUG) printf("URL: %s\n", URL);
 			 result=URLRuleCheckHost(Item, Host, URL);
+       if (Config->Flags & (FLAG_DEBUG | FLAG_SHOWURL)) printf("URL: %s\n", URL);
 		}
 
   Destroy(PortStr);
