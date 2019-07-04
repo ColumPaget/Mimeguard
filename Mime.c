@@ -14,18 +14,38 @@
 TMimeItem *MimeItemCreate(const char *FileName, const char *ContentType, const char *FileMagicsType)
 {
     TMimeItem *Item;
-    const char *ptr;
+    const char *ptr, *p_file;
+
+		if (strncasecmp(FileName, "mailto:", 7)==0) return(NULL);
+
+		if (strncasecmp(FileName, "https:", 6) ==0) 
+		{
+			p_file=FileName+6;
+			while (*p_file=='/') p_file++;
+			p_file=strchr(p_file, '/');
+		}
+		else if (strncasecmp(FileName, "http:", 5) ==0)
+		{
+			p_file=FileName+5;
+			while (*p_file=='/') p_file++;
+			p_file=strchr(p_file, '/');
+		}
+		else p_file=FileName;
+
+
+		//distinguish between NULL and "". "" means we want an item created without a file path
+		if (! p_file) return(NULL);
 
     Item=(TMimeItem *) calloc(1,sizeof(TMimeItem));
     Item->ContentType=CopyStr(Item->ContentType, ContentType);
     Item->FileMagicsType=CopyStr(Item->FileMagicsType, FileMagicsType);
     Item->ExtnType=CopyStr(Item->ExtnType, "");
-    Item->FileName=CopyStr(Item->FileName, FileName);
+    Item->FileName=CopyStr(Item->FileName, p_file);
     Item->SubItems=ListCreate();
     Item->Errors=ListCreate();
-    if (StrValid(FileName))
+    if (StrValid(p_file))
     {
-        ptr=strrchr(FileName, '.');
+        ptr=strrchr(p_file, '.');
         if (ptr) 
 				{
 					Item->ExtnType=CopyStr(Item->ExtnType, FileExtensionLookup(ptr));

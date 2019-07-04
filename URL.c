@@ -288,6 +288,8 @@ int URLRuleCheck(TMimeItem *Item, const char *URL)
     char *Proto=NULL, *Host=NULL, *PortStr=NULL, *Doc=NULL;
     int result=FALSE;
 
+		if (strncasecmp(URL, "mailto:", 7)==0) return(RULE_SAFE);
+
     ParseURL(URL, &Proto, &Host, &PortStr, NULL, NULL, &Doc, NULL);
     if (StrValid(Host))
 		{
