@@ -14,7 +14,7 @@ int ExportOpen(TMimeItem *Item, char **SavePath)
             {
                 *SavePath=MCopyStr(*SavePath, Config->ExportPath, Item->FileName, NULL);
                 MakeDirPath(*SavePath, 0700);
-                fd=open(*SavePath, O_CREAT | O_TRUNC | O_RDWR, 0700);
+                fd=open(*SavePath, O_CREAT | O_TRUNC | O_RDWR, 0600);
             }
             else
             {
