@@ -79,5 +79,5 @@ clean:
 install: mimeguard
 	./install-sh mimeguard $(bindir)
 
-test: libUseful.so
+test:
 	-echo "No tests written yet"
