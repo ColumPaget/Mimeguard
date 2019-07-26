@@ -31,7 +31,7 @@ void URLParseRule(const char *Declare)
     ptr=GetToken(ptr,"\\S", &Token, GETTOKEN_QUOTES);
 		while (ptr)
 		{
-		if (strcasecmp(Token, "safe")==0) Rule->Flags |= RULE_SAFE;
+		if (strcasecmp(Token, "safe")==0) SafeEvil = RULE_SAFE;
 		if (strncasecmp(Token, "exit=", 5)==0) Rule->ExitVal=atoi(Token+5);
 		
     ptr=GetToken(ptr,"\\S", &Token, GETTOKEN_QUOTES);
@@ -237,7 +237,6 @@ static int URLRuleCheckHost(TMimeItem *Item, const char *Host, const char *URL)
             case WHITELIST_IPLIST:
                 if (StrValid(IP) && InFileList(Rule->Argument, IP)) result=RULE_SAFE;
                 break;
-
 
             case BLACKLIST_REGION:
                 if (URLRegionCheck(Rule->Argument, IP, &RegionRegistrar, &RegionCountry))
