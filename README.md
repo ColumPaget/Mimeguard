@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.com/ColumPaget/Mimeguard.svg?branch=master)](https://travis-ci.com/ColumPaget/Mimeguard)
+
+
 # MIMEGUARD
 
 This is a utility that attempts to provide a 'firewall' for mail files. It allows the user to create policies governing which files are allowed within mails. It can also analyze OLE documents for macros, PDF documents for javascript or embedded files, RTF documents for embedded files, and HTML documents for various untrusted URLs. I created it after seeing too many virus-checkers allow files ending in extensions like .exe, .js, .bat, and so on, or word documents containing macros, or whatever.
