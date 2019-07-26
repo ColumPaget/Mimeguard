@@ -7,12 +7,11 @@
 #include "URL.h"
 #include "FileMagics.h"
 #include "Output.h"
-//#include "Rewrite.h"
 #include "Settings.h"
 #include "DocumentTypes.h"
 #include "Smtp.h"
 
-#define VERSION "4.2"
+#define VERSION "4.3"
 char *ConfigPath=NULL;
 
 
