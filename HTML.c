@@ -64,7 +64,7 @@ int HTMLTagWithURL(TMimeItem *Item, const char *TagData)
 {
     char *Name=NULL, *Value=NULL, *Tempstr=NULL, *Proto=NULL;
 		const char *IgnoreProtos[]={"mailto","x-msg","cid",NULL};
-    const char *ptr;
+    const char *ptr, *ptr2;
 		
 
     ptr=GetNameValuePair(TagData, "\\S", "=", &Name, &Value);
