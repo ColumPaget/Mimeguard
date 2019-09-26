@@ -5,7 +5,12 @@
 #include "Mime.h"
 
 
+extern ListNode *GlobalURLRules;
+extern ListNode *DocumentURLRules;
+
+
 int URLRuleCheck(TMimeItem *Item, const char *URL);
-void URLParseRule(const char *Rule);
+void URLParseRule(ListNode *URLRules, const char *Rule);
+void URLRulesClear(ListNode *URLRules);
 
 #endif

@@ -70,7 +70,7 @@ void ConfigFileLoad(const char *Path)
                 if (strcasecmp(Token,"Extn")==0) FileExtnRuleParse(ptr);
                 if (strcasecmp(Token,"String")==0) ConfigFileParseFileStringRule(ptr);
                 if (strcasecmp(Token,"Header")==0) ConfigFileParseMimeHeaderRule(ptr);
-                if (strcasecmp(Token,"URLRule")==0) URLParseRule(ptr);
+                if (strcasecmp(Token,"URLRule")==0) URLParseRule(GlobalURLRules, ptr);
 
                 if (strcasecmp(Token, "SmtpPassDir")==0) SmtpConfig(Token, ptr);
                 if (strcasecmp(Token, "SmtpFailDir")==0) SmtpConfig(Token, ptr);

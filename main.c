@@ -11,7 +11,7 @@
 #include "DocumentTypes.h"
 #include "Smtp.h"
 
-#define VERSION "4.3"
+#define VERSION "4.4"
 char *ConfigPath=NULL;
 
 
@@ -181,6 +181,9 @@ int ProcessFile(const char *Path)
         STREAMClose(S);
 
     }
+
+    //if any were loaded for this document then clear them
+    URLRulesClear(DocumentURLRules);
 
     if (MimeOuter) MimeItemDestroy(MimeOuter);
     Destroy(ExtnType);

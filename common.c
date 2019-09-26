@@ -1,5 +1,6 @@
 #include "common.h"
 #include "Mime.h"
+#include "URL.h"
 #include <glob.h>
 
 TConfig *Config=NULL;
@@ -22,6 +23,8 @@ void ConfigInit()
     Config=(TConfig *) calloc(1, sizeof(TConfig));
     Config->Flags = FLAG_SHOW_SAFE | FLAG_SHOW_EVIL | FLAG_SHOW_CURR;
     Config->SmtpAddress=CopyStr(Config->SmtpAddress, "tcp:127.0.0.1:25");
+		if (! GlobalURLRules) GlobalURLRules=ListCreate();
+		if (! DocumentURLRules) DocumentURLRules=ListCreate();
 }
 
 

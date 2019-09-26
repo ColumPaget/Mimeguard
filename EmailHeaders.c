@@ -2,6 +2,7 @@
 #include "FileTypeRules.h"
 #include "IPRegion.h"
 #include "DocumentStrings.h"
+#include "URL.h"
 
 ListNode *HeaderRules=NULL;
 
@@ -115,7 +116,7 @@ void EmailHeaderRulesConsider(TMimeItem *Item, const char *Header, const char *V
 						//These rules add filetype rules that are processed later
             if (strcasecmp(Token, "FileType")==0) FileTypeRuleParse(ptr, 0);
             if (strcasecmp(Token, "FileExtn")==0) FileExtnRuleParse(ptr);
-            if (strcasecmp(Token, "UrlRule")==0) URLParseRule(ptr);
+            if (strcasecmp(Token, "UrlRule")==0) URLParseRule(DocumentURLRules, ptr);
 
 						//These rules add/override the permitted documents strings
             if (strcasecmp(Token, "string")==0)

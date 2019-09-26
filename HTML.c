@@ -74,12 +74,19 @@ int HTMLTagWithURL(TMimeItem *Item, const char *TagData)
         {
             Tempstr=HTMLReformatURL(Tempstr, Value);
 						GetToken(Tempstr, ":", &Proto, 0);
+
+            Tempstr=HTMLReformatURL(Tempstr, Value);
+            ptr2=GetToken(Tempstr, ":", &Proto, 0);
+            ptr2=strrchr(ptr2, '/');
+            if (StrLen(ptr2) > 1)
+            {
             //Don't consider mailto URLs
             if (MatchTokenFromList(Proto, IgnoreProtos, 0)==-1)
             {
                 if (Config->Flags & FLAG_DEBUG) printf("URL: %s\n", Tempstr);
                 if (! (Config->Flags & FLAG_NO_URL_CHECKS)) URLRuleCheck(Item, Tempstr);
                 HTMLAddURLSubItem(Item, Tempstr);
+            }
             }
         }
         ptr=GetNameValuePair(ptr, "\\S", "=", &Name, &Value);

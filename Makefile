@@ -1,5 +1,5 @@
-FLAGS=-g -O2 -DPACKAGE_NAME=\"\" -DPACKAGE_TARNAME=\"\" -DPACKAGE_VERSION=\"\" -DPACKAGE_STRING=\"\" -DPACKAGE_BUGREPORT=\"\" -DPACKAGE_URL=\"\" -DSTDC_HEADERS=1 -D_FILE_OFFSET_BITS=64 -DHAVE_LIBZ=1
-LIBS=-lm -lz 
+FLAGS=-g -O2 -DPACKAGE_NAME=\"\" -DPACKAGE_TARNAME=\"\" -DPACKAGE_VERSION=\"\" -DPACKAGE_STRING=\"\" -DPACKAGE_BUGREPORT=\"\" -DPACKAGE_URL=\"\" -DSTDC_HEADERS=1 -D_FILE_OFFSET_BITS=64 -DHAVE_LIBSSL=1 -DHAVE_LIBCRYPTO=1 -DHAVE_LIBZ=1
+LIBS=-lm -lz -lcrypto -lssl 
 prefix=/usr/local
 sysconfdir=${prefix}/etc
 bindir=${exec_prefix}/bin
@@ -79,5 +79,5 @@ clean:
 install: mimeguard
 	./install-sh mimeguard $(bindir)
 
-test: libUseful.so
+test:
 	-echo "No tests written yet"
