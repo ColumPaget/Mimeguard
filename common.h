@@ -1,7 +1,7 @@
 #ifndef MIMEGUARD_COMMON_H
 #define MIMEGUARD_COMMON_H
 
-#include "libUseful-3/libUseful.h"
+#include "libUseful-4/libUseful.h"
 
 #define FLAG_EXPORT 1
 #define FLAG_SHOW_SAFE 2

@@ -1,10 +1,10 @@
-FLAGS=-g -O2 -DPACKAGE_NAME=\"\" -DPACKAGE_TARNAME=\"\" -DPACKAGE_VERSION=\"\" -DPACKAGE_STRING=\"\" -DPACKAGE_BUGREPORT=\"\" -DPACKAGE_URL=\"\" -DSTDC_HEADERS=1 -D_FILE_OFFSET_BITS=64 -DHAVE_LIBSSL=1 -DHAVE_LIBCRYPTO=1 -DHAVE_LIBZ=1
-LIBS=-lm -lz -lcrypto -lssl 
+FLAGS=-g -O2 -DPACKAGE_NAME=\"\" -DPACKAGE_TARNAME=\"\" -DPACKAGE_VERSION=\"\" -DPACKAGE_STRING=\"\" -DPACKAGE_BUGREPORT=\"\" -DPACKAGE_URL=\"\" -DSTDC_HEADERS=1 -D_FILE_OFFSET_BITS=64 -DHAVE_LIBZ=1
+LIBS=-lm -lz 
 prefix=/usr/local
 sysconfdir=${prefix}/etc
 bindir=${exec_prefix}/bin
 
-OBJ=common.o DocumentTypes.o Mime.o FileMagics.o FileExtensions.o EmailHeaders.o FileTypeRules.o Export.o DocumentStrings.o Settings.o Output.o Zip.o PDF.o RTF.o OLE.o XML.o HTML.o URL.o IPRegion.o Smtp.o libUseful-3/libUseful-3.a
+OBJ=common.o DocumentTypes.o Mime.o FileMagics.o FileExtensions.o EmailHeaders.o FileTypeRules.o Export.o DocumentStrings.o Settings.o Output.o Zip.o PDF.o RTF.o OLE.o XML.o HTML.o URL.o IPRegion.o Smtp.o libUseful-4/libUseful.a
 
 
 mimeguard: $(OBJ) main.c
@@ -70,8 +70,8 @@ Output.o: Output.h Output.c
 common.o: common.h common.c
 	$(CC) $(FLAGS) -c common.c
 
-libUseful-3/libUseful-3.a: 
-	$(MAKE) -C libUseful-3
+libUseful-4/libUseful.a: 
+	$(MAKE) -C libUseful-4
 
 clean:
 	@rm -f *.o */*.o */*.a */*.so mimeguard

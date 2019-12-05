@@ -250,6 +250,23 @@ The '!' before the mime-type in the 'contains' statement says that these mimetyp
 
 The 'contains' option implies the 'container' option, so this can be ommitted for containers where 'contains' is already used/
 
+'trust-contents' is an option that declares the contents of a specified container type to be safe, and not to need any checking. For example:
+
+```
+FileType application/zip safe contains=* trust-contents
+```
+
+would declare all zips safe, regardless of their contents. This is normally useful when dealing with specific file-types that are actually zip containers, but which are trusted. For example, some files produced by the solidworks cad package, and having the extension 'EASM' are zips:
+
+```
+Extn application/solidworks EASM
+FileType application/solidworks safe equiv=application/edrawings equiv=application/octet-stream equiv=application/zip trust-contents
+```
+
+This first declares a mime-type 'application/solidworks' and maps it to files ending in '.EASM'. The next line specifies that files of this mime-type can manifest as 'application/edrawings', 'application/octet-stream' and 'application/zip', and that any contents of these files should be trusted. Note, this rule will only apply to .EASM files, not to zip files in general.
+
+'trust-contents' is also useful when tied to a sender, using the 'Header From' match (see below). 
+
 Finally the 'exit' option can be used to signal to the calling/parent program that different action should be taken for a specific mail, like this:
 
 
@@ -272,10 +289,14 @@ String application/rtf \\objocx pFragments
 The 'Header' config can be used to match against an email header, and trigger a config option that overrides previously set options. The `<header type>` argument is an email header type like "To", "From" or "Subject". The `<header argument>` option is an fnmatch style pattern that matches against the variable part of the header. The config is a 'FileType' or 'String' command. For example:
 
 ```
-Header From *@microsoft.com FileType applicationa/x-ms* safe
+Header From *@microsoft.com FileType application/x-ms* safe
 ```
 
-This allows different configs for different email senders/recipients.
+This allows different configs for different email senders/recipients. For example, we can trust zips from a particular user:
+
+```
+Header From myself@myhost.com FileType application/zip safe trust-contents
+```
 
 
 # SOURCE IP CHECKS

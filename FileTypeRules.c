@@ -64,26 +64,27 @@ void FileTypeRuleParse(const char *Data, int Flags)
     while (ptr)
     {
         if (strcasecmp(Token,"evil")==0) Flags |= RULE_EVIL;
-        if (strcasecmp(Token,"safe")==0) Flags |= RULE_SAFE;
-        if (strcasecmp(Token,"istext")==0) Flags |= RULE_ISTEXT;
-        if (strcasecmp(Token,"container")==0) Flags |= RULE_CONTAINER;
-        if (strcasecmp(Token,"allow-blank-ctype")==0) Flags |= RULE_BLANK_CONTYPE;
-        if (strcasecmp(Token,"allow-blank-magic")==0) Flags |= RULE_BLANK_MAGIC;
-        if (strcasecmp(Token,"extn=magic")==0) Flags |= RULE_EXTN_MATCHES_MAGIC;
-        if (strcasecmp(Token,"ctype=magic")==0) Flags |= RULE_CONTYPE_MATCHES_MAGIC;
-        if (strcasecmp(Token,"allow-empty")==0) Flags |= RULE_ALLOW_EMPTY;
-        if (strcasecmp(Token,"allow-macros")==0) Flags |= RULE_ALLOW_MACROS;
-        if (strcasecmp(Token,"allow-encrypt")==0) Flags |= RULE_ALLOW_ENCRYPTED;
-        if (strcasecmp(Token,"allow-encrypted")==0) Flags |= RULE_ALLOW_ENCRYPTED;
-        if (strncasecmp(Token,"equiv=",6)==0) Equiv=CopyStr(Equiv, Token+6);
-        if (strncasecmp(Token,"override=",9)==0) Overrides=CopyStr(Overrides, Token+9);
-        if (strncasecmp(Token,"exit=",5)==0) ExitVal=atoi(Token+5);
-        if (strncasecmp(Token,"contains=",9)==0)
+        else if (strcasecmp(Token,"safe")==0) Flags |= RULE_SAFE;
+        else if (strcasecmp(Token,"istext")==0) Flags |= RULE_ISTEXT;
+        else if (strcasecmp(Token,"container")==0) Flags |= RULE_CONTAINER;
+        else if (strcasecmp(Token,"allow-blank-ctype")==0) Flags |= RULE_BLANK_CONTYPE;
+        else if (strcasecmp(Token,"allow-blank-magic")==0) Flags |= RULE_BLANK_MAGIC;
+        else if (strcasecmp(Token,"extn=magic")==0) Flags |= RULE_EXTN_MATCHES_MAGIC;
+        else if (strcasecmp(Token,"ctype=magic")==0) Flags |= RULE_CONTYPE_MATCHES_MAGIC;
+        else if (strcasecmp(Token,"allow-empty")==0) Flags |= RULE_ALLOW_EMPTY;
+        else if (strcasecmp(Token,"allow-macros")==0) Flags |= RULE_ALLOW_MACROS;
+        else if (strcasecmp(Token,"allow-encrypt")==0) Flags |= RULE_ALLOW_ENCRYPTED;
+        else if (strcasecmp(Token,"allow-encrypted")==0) Flags |= RULE_ALLOW_ENCRYPTED;
+        else if (strncasecmp(Token,"equiv=",6)==0) Equiv=CopyStr(Equiv, Token+6);
+        else if (strncasecmp(Token,"override=",9)==0) Overrides=CopyStr(Overrides, Token+9);
+        else if (strncasecmp(Token,"exit=",5)==0) ExitVal=atoi(Token+5);
+        else if (strncasecmp(Token,"contains=",9)==0)
         {
             Contains=CopyStr(Contains, Token+9);
             Flags |= RULE_CONTAINER;
         }
-        if (strcasecmp(Token,"strip")==0) Flags |= RULE_STRIP;
+        else if (strcasecmp(Token,"trust-contents")==0) Flags |= RULE_TRUST_CONTENTS;
+        else if (strcasecmp(Token,"strip")==0) Flags |= RULE_STRIP;
 
 
         ptr=GetToken(ptr,"\\S",&Token,GETTOKEN_QUOTES);
@@ -394,7 +395,7 @@ int FileRulesProcessRule(TFileRule *Rule, TMimeItem *Item)
                 //root item can contain anything!
                 if (! (Item->Flags & MIMEFLAG_ROOT))	return(RULE_CONTAINER);
             }
-            else ProcessContainerItems(Rule, Item->SubItems);
+            else if (! (Rule->Flags & RULE_TRUST_CONTENTS)) ProcessContainerItems(Rule, Item->SubItems);
         }
         //item is a container but is empty
         else if (Rule->Flags & RULE_CONTAINER)

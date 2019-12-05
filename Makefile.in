@@ -4,7 +4,7 @@ prefix=@prefix@
 sysconfdir=@sysconfdir@
 bindir=@bindir@
 
-OBJ=common.o DocumentTypes.o Mime.o FileMagics.o FileExtensions.o EmailHeaders.o FileTypeRules.o Export.o DocumentStrings.o Settings.o Output.o Zip.o PDF.o RTF.o OLE.o XML.o HTML.o URL.o IPRegion.o Smtp.o libUseful-3/libUseful-3.a
+OBJ=common.o DocumentTypes.o Mime.o FileMagics.o FileExtensions.o EmailHeaders.o FileTypeRules.o Export.o DocumentStrings.o Settings.o Output.o Zip.o PDF.o RTF.o OLE.o XML.o HTML.o URL.o IPRegion.o Smtp.o libUseful-4/libUseful.a
 
 
 mimeguard: $(OBJ) main.c
@@ -70,8 +70,8 @@ Output.o: Output.h Output.c
 common.o: common.h common.c
 	$(CC) $(FLAGS) -c common.c
 
-libUseful-3/libUseful-3.a: 
-	$(MAKE) -C libUseful-3
+libUseful-4/libUseful.a: 
+	$(MAKE) -C libUseful-4
 
 clean:
 	@rm -f *.o */*.o */*.a */*.so mimeguard
