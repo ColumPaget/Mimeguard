@@ -47,6 +47,8 @@ TMimeItem *HTMLAddURLSubItem(TMimeItem *Parent, const char *URL)
 
     //All the extraction of ExtnType etc has to be done on the Doc part of the URL so that 'http://somewhere.com' isn't
     //misidentified as a windows command file
+		if (StrValid(Doc))
+		{
     SubItem=MimeItemCreate(Doc,"","");
 		if (SubItem)
 		{
@@ -54,6 +56,7 @@ TMimeItem *HTMLAddURLSubItem(TMimeItem *Parent, const char *URL)
     else SubItem->ContentType=CopyStr(SubItem->ContentType, "text/html");
     SubItem->FileName=CopyStr(SubItem->FileName, URL);
     ListAddItem(Parent->SubItems, SubItem);
+		}
 		}
 
     Destroy(Doc);
