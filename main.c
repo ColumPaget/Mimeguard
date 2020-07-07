@@ -11,7 +11,7 @@
 #include "DocumentTypes.h"
 #include "Smtp.h"
 
-#define VERSION "4.5"
+#define VERSION "4.6"
 char *ConfigPath=NULL;
 
 
@@ -47,6 +47,7 @@ void PrintUsage()
     printf("  %-25s %s\n","-safe-dir <path>", "Move safe files to directory <path>");
     printf("  %-25s %s\n","-evil-dir <path>", "Move unsafe files to directory <path>");
     printf("  %-25s %s\n","-show <email header>", "Show specified email header");
+    printf("  %-25s %s\n","-show <email header>,<email header>,...", "Show multiple specified email headers");
 		printf("  %-25s %s\n","-no-url", "Do not perform checks on urls in document (following URLs can slow checks up a lot");
 		printf("  %-25s %s\n","-color", "Output result info with color");
 		printf("  %-25s %s\n","-no-color", "Output result info without color");

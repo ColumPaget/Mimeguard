@@ -3,8 +3,9 @@ LIBS=-lm @LIBS@
 prefix=@prefix@
 sysconfdir=@sysconfdir@
 bindir=@bindir@
+LU_STATIC=@LU_STATIC@
 
-OBJ=common.o DocumentTypes.o Mime.o FileMagics.o FileExtensions.o EmailHeaders.o FileTypeRules.o Export.o DocumentStrings.o Settings.o Output.o Zip.o PDF.o RTF.o OLE.o XML.o HTML.o URL.o IPRegion.o Smtp.o libUseful-4/libUseful.a
+OBJ=common.o DocumentTypes.o Mime.o FileMagics.o FileExtensions.o EmailHeaders.o FileTypeRules.o Export.o DocumentStrings.o Settings.o Output.o Zip.o PDF.o RTF.o OLE.o XML.o HTML.o URL.o IPRegion.o Smtp.o $(LU_STATIC)
 
 
 mimeguard: $(OBJ) main.c
